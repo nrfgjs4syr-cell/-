@@ -1,7 +1,8 @@
-// 一次関数ゲーム - 完全版スクリプト
-// 設定・状態
+// 一次関数ゲーム - 完全版スクリプト（変化の割合(rate) 問題を追加）
+
+// --- 既存の状態変数 ---
 let currentA = 1, currentB = 0, currentX = 0, currentY = 0;
-let questionType = "y"; // 質問サブタイプ（y/a/b/ab/2pt/eq）
+let questionType = "y"; // y/a/b/ab/2pt/eq/rate
 let graphA = 1, graphB = 0, graphChart = null;
 let currentGameQuestionType = "algebra";
 
@@ -10,12 +11,12 @@ let gameActive = false;
 let totalQuestions = 10, currentQuestion = 0, correctCount = 0;
 let wrongProblems = [];
 
-// 基本ユーティリティ
+// --- ユーティリティ ---
 function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
 function clampDecimal(val) { return Math.round(val * 10) / 10; }
 
-// 難易度レンジ設定
+// --- 難易度 / 範囲 ---
 function getLifeLimitByDifficulty(d) { return d === "easy" ? 5 : d === "normal" ? 4 : 3; }
 function getTimeLimitByDifficulty(d) { return d === "easy" ? 45 : d === "normal" ? 60 : 40; }
 
@@ -40,10 +41,10 @@ function getRanges() { return window.autoRange || { aMin:1, aMax:3, bMin:-3, bMa
 
 function onProblemTypeChange() {
   const v = document.getElementById("problemType").value;
-  if (["algebra","graph","table","mix"].includes(v)) currentGameQuestionType = v;
+  if (["algebra","graph","table","rate","mix"].includes(v)) currentGameQuestionType = v;
 }
 
-// ゲーム制御
+// --- ゲーム制御 ---
 function startGame() {
   score = 0; level = 1; currentQuestion = 0; correctCount = 0; gameActive = true;
   setDifficultyRange(document.getElementById("difficulty").value);
@@ -80,7 +81,7 @@ function loseLife() {
 
 function endGame() {
   gameActive = false; clearInterval(timerInterval);
-  document.getElementById("gameOverPanel").style.display = "block";
+  document.getElementById("gameOverPanel")?.style.display = "block";
   document.getElementById("retryBtn").style.display = "inline-block";
   document.getElementById("checkBtn").style.display = "none";
   document.getElementById("graphCheckBtn").style.display = "none";
@@ -90,7 +91,7 @@ function endGame() {
   document.getElementById("resultSummary").textContent = `ゲーム終了：正解 ${correctCount} / ${totalQuestions}（${Math.round((correctCount/totalQuestions)*100)}%）`;
 }
 
-// 問題生成
+// --- 問題の生成・切替 ---
 function generateGameQuestion() {
   if (!gameActive) return;
   if (currentQuestion >= totalQuestions) { endGame(); return; }
@@ -98,27 +99,24 @@ function generateGameQuestion() {
   currentQuestion++;
   document.getElementById("questionNumber").textContent = `【第${currentQuestion}問 / 全${totalQuestions}問】`;
 
-  // hide all
   hideAllAnswerUI();
 
   let type = currentGameQuestionType;
   if (type === "mix") {
-    const arr = ["algebra","graph","table"];
+    const arr = ["algebra","graph","table","rate"];
     type = arr[randInt(0, arr.length-1)];
   }
 
   if (type === "algebra") generateAlgebraQuestionImproved();
-  else if (type === "graph") {
-    document.getElementById("graphPanel").style.display = "block";
-    generateGraphQuestion(true);
-  } else if (type === "table") generateTableQuestion();
+  else if (type === "graph") { document.getElementById("graphPanel").style.display = "block"; generateGraphQuestion(true); }
+  else if (type === "table") generateTableQuestion();
+  else if (type === "rate") generateRateQuestion();
 }
 
 function hideAllAnswerUI() {
   document.getElementById("answerResult").textContent = "";
   document.getElementById("hintText").style.display = "none";
   document.getElementById("hintText").textContent = "";
-  // inputs
   ["answerInput","answerInputA","answerInputB","equationInput","slopeInput","interceptInput"].forEach(id=>{
     const el = document.getElementById(id);
     if (el) el.style.display = "none";
@@ -137,13 +135,11 @@ function generateAlgebraQuestionImproved() {
   const range = getRanges();
   const difficulty = document.getElementById("difficulty").value || "easy";
 
-  // サブタイプの選択
   const pool = difficulty === "easy" ? ["y","ab","y"] :
                difficulty === "normal" ? ["y","a","b","2pt"] :
                ["y","a","b","2pt","eq","y"];
   questionType = pool[randInt(0, pool.length-1)];
 
-  // 係数生成
   let a = randInt(range.aMin, range.aMax);
   let b = randInt(range.bMin, range.bMax);
   if (difficulty === "hard" && Math.random() < 0.35) {
@@ -154,7 +150,6 @@ function generateAlgebraQuestionImproved() {
 
   currentA = a; currentB = b;
 
-  // サブタイプごとの問題文生成
   if (questionType === "y") {
     currentX = randInt(range.xMin, range.xMax);
     currentY = currentA * currentX + currentB;
@@ -177,7 +172,6 @@ function generateAlgebraQuestionImproved() {
     document.getElementById("checkBtn").style.display = "inline";
     document.getElementById("hintBtn").style.display = "inline";
   } else if (questionType === "ab") {
-    // a,b を問う問題：グラフ表示して a,b を入力
     document.getElementById("question").textContent = `次の一次関数の a（傾き）と b（切片）を答えてください。`;
     document.getElementById("answerInputA").style.display = "inline";
     document.getElementById("answerInputB").style.display = "inline";
@@ -187,20 +181,18 @@ function generateAlgebraQuestionImproved() {
     drawAlgebraGraph(currentA, currentB);
     return;
   } else if (questionType === "2pt") {
-    // 2点から傾きを求める
     let x1 = randInt(range.xMin, range.xMax);
     let x2 = randInt(range.xMin, range.xMax);
     while (x2 === x1) x2 = randInt(range.xMin, range.xMax);
     const y1 = currentA * x1 + currentB;
     const y2 = currentA * x2 + currentB;
-    currentA = (y2 - y1) / (x2 - x1); // 正解用に上書き
+    currentA = (y2 - y1) / (x2 - x1);
     document.getElementById("question").textContent = `点 (${x1}, ${y1}) と (${x2}, ${y2}) を通る直線の傾き a を求めなさい。`;
     document.getElementById("answerInput").style.display = "inline";
     document.getElementById("checkBtn").style.display = "inline";
     document.getElementById("hintBtn").style.display = "inline";
     return;
   } else if (questionType === "eq") {
-    // 式を答える（ここでは a,b を入力してもらう形式に落とし込む）
     document.getElementById("question").textContent = `下のグラフを見て、一次関数の式 y = ax + b の a と b を答えてください。`;
     document.getElementById("answerInputA").style.display = "inline";
     document.getElementById("answerInputB").style.display = "inline";
@@ -211,34 +203,62 @@ function generateAlgebraQuestionImproved() {
     return;
   }
 
-  // 共通：グラフを示す（視覚的補助）
   document.getElementById("graphPanel").style.display = "block";
   drawAlgebraGraph(currentA, currentB);
 }
 
-// 判定 - 計算問題
+// ----- ここから追加：変化の割合(rate) 問題 -----
+function generateRateQuestion() {
+  if (!gameActive) return;
+  const range = getRanges();
+  // 作問用に一次関数を生成してから2点をとる（整数点で見やすく）
+  let a = randInt(range.aMin, range.aMax);
+  if (a === 0) a = 1;
+  let b = randInt(range.bMin, range.bMax);
+  // 2つの異なる x を選ぶ
+  let x1 = randInt(range.xMin, range.xMax);
+  let x2 = randInt(range.xMin, range.xMax);
+  while (x2 === x1) x2 = randInt(range.xMin, range.xMax);
+  const y1 = a * x1 + b;
+  const y2 = a * x2 + b;
+
+  // 正解（変化の割合 Δy/Δx = (y2-y1)/(x2-x1)）を currentA に保存して判定に使う
+  currentA = (y2 - y1) / (x2 - x1);
+  currentB = null; currentX = null; currentY = null;
+  questionType = "rate";
+
+  document.getElementById("question").textContent = `点 (${x1}, ${y1}) と (${x2}, ${y2}) の変化の割合（Δy/Δx）を求めなさい。`;
+  document.getElementById("answerInput").style.display = "inline";
+  document.getElementById("checkBtn").style.display = "inline";
+  document.getElementById("hintBtn").style.display = "inline";
+
+  // グラフも表示して視覚的に確認できるようにする
+  document.getElementById("graphPanel").style.display = "block";
+  drawAlgebraGraph(a, b);
+}
+// ----- 追加ここまで -----
+
+// ----- 判定（計算問題） -----
 function checkAnswer() {
   if (!gameActive) return;
-  // グラフモードの判定は checkGraphAnswer() に委ねる
   if (currentGameQuestionType === "graph" && document.getElementById("graphPanel").style.display === "block") {
     checkGraphAnswer(); return;
   }
-  if (currentGameQuestionType === "table") return; // table は専用処理
+  if (currentGameQuestionType === "table") return;
 
   const difficulty = document.getElementById("difficulty").value || "easy";
   const tol = difficulty === "easy" ? 0.01 : difficulty === "normal" ? 0.005 : 0.001;
   const resultDiv = document.getElementById("answerResult");
 
-  // a,b 両方入力タイプ
   const aInputVisible = document.getElementById("answerInputA").style.display !== "none";
   const bInputVisible = document.getElementById("answerInputB").style.display !== "none";
   if (aInputVisible && bInputVisible) {
     const userA = Number(document.getElementById("answerInputA").value);
     const userB = Number(document.getElementById("answerInputB").value);
-    if (approxEqual(userA, currentA, tol) && approxEqual(userB, currentB, tol)) {
+    if (approxEqual(userA, currentA, tol) && (currentB === null ? true : approxEqual(userB, currentB, tol))) {
       handleCorrect();
     } else {
-      resultDiv.textContent = `不正解… 正しい答えは a=${currentA}、b=${currentB} です。`;
+      resultDiv.textContent = `不正解… 正しい答えは a=${currentA}${currentB !== null ? `、b=${currentB}` : ""} です。`;
       resultDiv.style.color = "red";
       addWrongProblem("ab", currentA, currentB, null, null);
       loseLife();
@@ -246,7 +266,6 @@ function checkAnswer() {
     return;
   }
 
-  // 単一数値タイプ
   const raw = document.getElementById("answerInput").value;
   const userVal = Number(raw);
   if (raw === "" || isNaN(userVal)) {
@@ -259,6 +278,7 @@ function checkAnswer() {
   else if (questionType === "a") correctVal = currentA;
   else if (questionType === "b") correctVal = currentB;
   else if (questionType === "2pt") correctVal = currentA;
+  else if (questionType === "rate") correctVal = currentA; // 変化の割合の判定
 
   if (correctVal === null || correctVal === undefined) {
     document.getElementById("answerResult").textContent = "内部エラー：正解が未設定です。";
@@ -275,7 +295,6 @@ function checkAnswer() {
 }
 
 function approxEqual(a, b, tol) { return Math.abs(Number(a) - Number(b)) <= tol; }
-
 function handleCorrect() {
   const rd = document.getElementById("answerResult");
   rd.textContent = "正解！ +10点"; rd.style.color = "green";
@@ -285,7 +304,6 @@ function handleCorrect() {
   setTimeout(generateGameQuestion, 800);
 }
 
-// ヒント表示
 function showHint() {
   const hint = document.getElementById("hintText");
   let text = "ヒント：";
@@ -294,11 +312,12 @@ function showHint() {
   else if (questionType === "b") text += `式 y = ax + b より b = y - ax を計算します。`;
   else if (questionType === "ab") text += `グラフの傾きを視覚的に確認してください。切片は x=0 の y 値です。`;
   else if (questionType === "2pt") text += `傾きは (y2 - y1) / (x2 - x1) です。`;
+  else if (questionType === "rate") text += `変化の割合は Δy / Δx = (y2 - y1) / (x2 - x1) で求められます。`;
   else text += `まず式に代入してみましょう。`;
   hint.textContent = text; hint.style.display = "block";
 }
 
-// ----- グラフ描画と判定（graphMode 対応） -----
+// ----- グラフ描画（Chart.js） -----
 function drawAlgebraGraph(a, b) {
   graphA = a; graphB = b;
   const range = getRanges();
@@ -362,7 +381,6 @@ function generateGraphQuestion(isGameMode = false) {
   graphB = randInt(range.bMin, range.bMax);
   drawAlgebraGraph(graphA, graphB);
 
-  // 入力UI の切替（graphMode）
   const graphMode = document.getElementById("graphMode").value || "ab";
   document.getElementById("graphProblem").textContent = `下のグラフを見て答えてください。`;
   if (graphMode === "ab") {
@@ -381,7 +399,7 @@ function generateGraphQuestion(isGameMode = false) {
   }
 }
 
-// graph 判定（a,b or 式）
+// ----- graph 判定（a,b or 式） -----
 function checkGraphAnswer() {
   const graphMode = document.getElementById("graphMode").value || "ab";
   const resultDiv = document.getElementById("graphAnswerResult");
@@ -399,7 +417,6 @@ function checkGraphAnswer() {
     return;
   }
 
-  // 式入力の正規化比較
   const userRaw = (document.getElementById("equationInput").value || "").trim();
   const userNorm = normalizeEquationString(userRaw);
   const correctNorm = normalizeEquationString(formatFunctionString(graphA, graphB));
@@ -413,29 +430,26 @@ function checkGraphAnswer() {
   }
 }
 
-// 式の正規化（単純な a,b の抽出）
 function normalizeEquationString(s) {
   if (!s) return "";
   let t = s.toLowerCase();
-  t = t.replace(/[　\s]/g, ""); // 全角/半角空白削除
+  t = t.replace(/[　\s]/g, "");
   if (t.startsWith("y=")) t = t.slice(2);
-  // x の係数を取得
   const m = t.match(/^([+-]?\d*\.?\d*)x([+-]?\d+\.?\d*)?$/);
   if (m) {
     let a = m[1]; if (a === "" || a === "+") a = "1"; if (a === "-") a = "-1";
     let b = m[2] || "+0";
     return `${Number(a)}x${b}`;
   }
-  // fallback: return compact string
   return t;
 }
 function formatFunctionString(a,b) {
   if (b === 0) return `y=${a}x`;
   if (b > 0) return `y=${a}x+${b}`;
-  return `y=${a}x${b}`; // b includes sign
+  return `y=${a}x${b}`;
 }
 
-// ----- 表問題（既存ロジック） -----
+// ----- 表問題 ----- 
 function generateTableQuestion() {
   const range = getRanges();
   currentA = randInt(range.aMin, range.aMax);
@@ -459,7 +473,6 @@ function generateTableQuestion() {
   document.getElementById("tableAnswerInput").value = "";
   document.getElementById("tableCheckBtn").style.display = "inline-block";
   document.getElementById("tableCheckBtn").onclick = ()=> checkTableAnswer(answerY);
-  // show graph as visual aid
   document.getElementById("graphPanel").style.display = "block";
   drawAlgebraGraph(currentA, currentB);
 }
@@ -477,7 +490,7 @@ function checkTableAnswer(ansY) {
   }
 }
 
-// ----- 類似問題機能等 -----
+// ----- 類似問題機能 -----
 function addWrongProblem(type,a,b,x,y) {
   wrongProblems.push({type,a,b,x,y});
   updateWrongProblemsPanel();
@@ -498,7 +511,6 @@ function challengeSimilarProblem() {
 function showSimilarProblem(type,a,b,x,y) {
   currentA = a; currentB = b; currentX = x; currentY = y; questionType = type;
   if (type === "table") {
-    // reuse table logic with given a,b
     let xVals=[]; while(xVals.length<3){ let xx=randInt(getRanges().xMin,getRanges().xMax); if(!xVals.includes(xx)) xVals.push(xx); }
     xVals.sort((p,q)=>p-q);
     const blankIdx = randInt(0,2);
@@ -532,7 +544,6 @@ function showSimilarProblem(type,a,b,x,y) {
     }
     return;
   }
-  // algebra 系の類似問題を表示
   if (type === "y") {
     document.getElementById("question").textContent = `一次関数のとき、x = ${x} の y の値は？`;
     document.getElementById("answerInput").style.display = "inline"; document.getElementById("checkBtn").style.display = "inline";
@@ -558,6 +569,19 @@ function showSimilarProblem(type,a,b,x,y) {
     document.getElementById("graphPanel").style.display = "block"; drawAlgebraGraph(a,b);
     return;
   }
+  if (type === "rate") {
+    // show rate problem as similar
+    let x1 = randInt(getRanges().xMin, getRanges().xMax);
+    let x2 = randInt(getRanges().xMin, getRanges().xMax);
+    while (x2 === x1) x2 = randInt(getRanges().xMin, getRanges().xMax);
+    const y1 = a * x1 + b;
+    const y2 = a * x2 + b;
+    currentA = (y2 - y1) / (x2 - x1);
+    document.getElementById("question").textContent = `点 (${x1}, ${y1}) と (${x2}, ${y2}) の変化の割合（Δy/Δx）を求めなさい。`;
+    document.getElementById("answerInput").style.display = "inline"; document.getElementById("checkBtn").style.display = "inline";
+    document.getElementById("graphPanel").style.display = "block"; drawAlgebraGraph(a,b);
+    return;
+  }
 }
 
 // 類似パネル更新
@@ -574,6 +598,7 @@ function updateWrongProblemsPanel() {
     else if (p.type === "a") html += `<li>a: a=${p.a}, b=${p.b}, x=${p.x}, y=${p.y}</li>`;
     else if (p.type === "b") html += `<li>b: a=${p.a}, b=${p.b}, x=${p.x}, y=${p.y}</li>`;
     else if (p.type === "ab") html += `<li>ab: a=${p.a}, b=${p.b}</li>`;
+    else if (p.type === "rate") html += `<li>変化の割合: a=${p.a}, b=${p.b}</li>`;
     else html += `<li>その他: a=${p.a}, b=${p.b}</li>`;
   });
   list.innerHTML = html;
