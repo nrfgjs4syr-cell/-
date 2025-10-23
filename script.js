@@ -188,7 +188,8 @@ function generateAlgebraQuestion() {
   const difficulty = document.getElementById("difficulty") ? document.getElementById("difficulty").value : "easy";
   if (difficulty === "easy") {
     questionType = "ab";
-    document.getElementById("question").textContent = `一次関数の式「y = ax + b」のa（傾き）とb（切片）を答えてください。\n（例：y = 2x + 1）`;
+    // 例の式表示を削除しました
+    document.getElementById("question").textContent = `一次関数の式「y = ax + b」のa（傾き）とb（切片）を答えてください。`;
     document.getElementById("answerInput").style.display = "none";
     document.getElementById("answerInputA").style.display = "inline";
     document.getElementById("answerInputB").style.display = "inline";
@@ -715,7 +716,8 @@ function showSimilarProblem(type, a, b, x, y) {
     document.getElementById("answerInputB").style.display = "none";
     document.getElementById("checkBtn").style.display = "inline";
   } else if (type === "ab") {
-    document.getElementById("question").textContent = `一次関数の式「y = ax + b」のa（傾き）とb（切片）を答えてください。\n（例：y = 2x + 1）`;
+    // 例の式表示を削除しました
+    document.getElementById("question").textContent = `一次関数の式「y = ax + b」のa（傾き）とb（切片）を答えてください。`;
     document.getElementById("answerInput").style.display = "none";
     document.getElementById("answerInputA").style.display = "inline";
     document.getElementById("answerInputB").style.display = "inline";
