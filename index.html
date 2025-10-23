@@ -1,281 +1,161 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8">
   <title>一次関数ゲーム</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
+    /* 基本レイアウト */
     body {
-      font-family: sans-serif;
-      margin: 0; padding: 0;
+      font-family: "Noto Sans JP", "Yu Gothic", "Meiryo", "Segoe UI", Arial, sans-serif;
+      margin: 0;
+      padding: 0;
       background: #f3f6fb;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
     }
-    h1 {
-      text-align: center;
-      margin-top: 10px;
-    }
+    h1 { text-align: center; margin-top: 10px; }
     #gameStats {
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 12px;
-      font-size: 1.15em;
-      margin-bottom: 10px;
+      display: flex; justify-content: center; flex-wrap: wrap; gap: 12px;
+      font-size: 1.15em; margin-bottom: 10px;
     }
-    .big-select,
-    .big-button {
-      font-size: 1.3em;
-      padding: 12px 24px;
-      margin: 8px 12px;
+
+    /* コントロール */
+    .big-select, .big-button {
+      font-size: 1.15em;
+      padding: 10px 18px;
+      margin: 6px 8px;
       border-radius: 8px;
       border: 1px solid #3578e5;
-      box-shadow: 0 2px 6px rgba(0,0,32,0.09);
       background: #fff;
-      transition: box-shadow 0.15s;
     }
-    .big-select:focus,
-    .big-button:active {
-      box-shadow: 0 2px 12px rgba(53,120,229,0.25);
-      outline: none;
-    }
-    button {
-      font-size: 1em;
-      padding: 6px 18px;
-      margin: 4px 2px;
-      background: #3578e5;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    button:active {
-      background: #174c9a;
-    }
-    #gameOverPanel {
-      text-align: center;
-      margin: 15px 0 0 0;
-    }
-    #customRangePanel, #modePanel, #questionNumber, #question, #answerResult, #resultSummary, #graphPanel, #similarProblemsPanel {
-      max-width: 480px;
-      margin: auto;
-      box-sizing: border-box;
-      padding: 0 8px;
-    }
+    button { cursor: pointer; }
     #customRangePanel {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px 12px;
-      align-items: center;
-      font-size: 1.08em;
-      margin-bottom: 8px;
-      justify-content: center;
-    }
-    #question {
-      font-size: 1.19em;
-      margin: 22px 0 8px 0;
-      white-space: pre-line;
-    }
-    #questionNumber {
-      font-size: 1.09em;
-      color: #446;
-      margin: 10px 0 0 0;
-    }
-    input[type="number"] {
-      width: 80px;
-      max-width: 36vw;
-      font-size: 1.08em;
-      padding: 4px;
-      margin: 0 2px 3px 0;
-      box-sizing: border-box;
-      border: 1px solid #bbb;
-      border-radius: 4px;
+      display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center;
+      font-size: 1.02em; margin-bottom: 8px; justify-content: center;
+      max-width: 980px; margin-left: auto; margin-right: auto;
     }
 
-    /* グラフ領域を大きくする */
+    /* メイン */
+    #question { max-width: 980px; margin: 18px auto; font-size: 1.15em; white-space: pre-line; }
+    #questionNumber { text-align: center; color: #446; margin-top: 8px; }
+
+    input[type="number"], input[type="text"] {
+      padding: 6px; border: 1px solid #bbb; border-radius: 6px; font-size: 1.02em;
+    }
+    .small-input { width: 84px; }
+
+    /* グラフ周り */
     #graphPanel {
-      margin-top: 10px;
-      margin-bottom: 20px;
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,32,0.06);
-      padding: 18px 12px 18px 12px;
-      display: none;
-      /* 大きめの最大幅に変更 */
-      max-width: 760px;
-      width: 95%;
+      margin: 10px auto 20px auto; background: #fff; border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,32,0.06); padding: 18px; display: none;
+      max-width: 980px; width: 95%;
     }
-    #graphProblem {
-      font-size: 1.09em;
-      margin-bottom: 6px;
-      text-align: center;
-    }
-    /* canvas を親の高さに合わせて伸ばす（Chart.js の maintainAspectRatio: false と合わせる） */
-    .graph-container {
-      position: relative;
-      width: 100%;
-      /* 高さを確保（必要に応じて更に大きくできます） */
-      height: 420px;
-    }
-    canvas#graphCanvas {
-      display: block;
-      margin: 0 auto;
-      max-width: 100%;
-      /* 高さは親の .graph-container に従う */
-      width: 100% !important;
-      height: 100% !important;
-      background: #f9f9f9;
-      border-radius: 4px;
-    }
+    .graph-container { position: relative; width: 100%; height: 420px; }
+    canvas#graphCanvas { width: 100% !important; height: 100% !important; background: #f9f9f9; border-radius: 6px; display:block; }
 
-    #similarProblemsPanel {
-      margin-top: 18px;
-      margin-bottom: 16px;
-      background: #fff9e5;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(255,200,0,0.08);
-      padding: 12px 8px;
-      display: none;
-    }
-    #similarProblemsPanel h2 {
-      font-size: 1.1em;
-      color: #c45a00;
-      margin: 0 0 8px 0;
-      text-align: center;
-    }
-    #similarProblemsList {
-      font-size: 1em;
-      color: #333;
-      margin: 0;
-      padding-left: 1em;
-    }
-    /* 表問題用テーブル */
-    #tablePanel {
-      margin: 12px auto 14px auto;
-      display: none;
-      max-width: 480px;
-      background: #f9f9f9;
-      border-radius: 8px;
-      box-shadow: 0 2px 7px rgba(0,0,0,0.07);
-      padding: 10px 8px;
-    }
-    #tablePanel table {
-      margin: auto;
-      border-collapse: collapse;
-      background: #fff;
-    }
-    #tablePanel th, #tablePanel td {
-      border: 1px solid #aaa;
-      padding: 8px 16px;
-      text-align: center;
-      font-size: 1.08em;
-    }
-    #tablePanel th {
-      background: #e6e8f7;
-    }
+    /* その他パネル */
+    #similarProblemsPanel { max-width: 760px; margin: 14px auto; display: none; background: #fff9e5; padding: 12px; border-radius:8px; }
+    #hintText { max-width: 760px; margin: 8px auto; padding: 10px; background: #fff8e1; border-radius:6px; display:none; color:#6b4b00; }
 
-    @media (max-width: 900px) {
-      /* モバイルでは高さを縮める */
-      .graph-container { height: 320px; }
-    }
+    /* レスポンシブ */
+    @media (max-width: 900px) { .graph-container { height: 320px; } }
     @media (max-width: 700px) {
-      #question, #customRangePanel, #graphProblem, #resultSummary, #answerResult {
-        font-size: 1em;
-      }
-      #gameStats { font-size: 1em; }
-      #customRangePanel {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-      button, .big-button {
-        font-size: 1.15em;
-        padding: 10px 18px;
-      }
-      .big-select {
-        font-size: 1.15em;
-      }
-      input[type="number"] {
-        width: 60vw;
-        max-width: 140px;
-        font-size: 1em;
-      }
-      #tablePanel table, #tablePanel th, #tablePanel td { font-size: 0.98em; }
-    }
-    @media (max-width: 450px) {
-      #customRangePanel, #modePanel, #question, #questionNumber, #resultSummary, #answerResult, #graphPanel, #similarProblemsPanel, #tablePanel {
-        padding-left: 2vw;
-        padding-right: 2vw;
-      }
-      #graphPanel, #similarProblemsPanel, #tablePanel { padding-left: 2vw; padding-right: 2vw; }
-      canvas#graphCanvas { max-width: 100vw; }
+      #customRangePanel { flex-direction: column; align-items: flex-start; }
+      .big-select, .big-button { font-size: 1.05em; padding: 8px 12px; }
+      input[type="number"], input[type="text"] { font-size: 1em; }
     }
   </style>
 </head>
 <body>
   <h1>一次関数ゲーム</h1>
+
   <div id="gameStats">
     スコア: <span id="score">0</span>　
     ライフ: <span id="life">3</span>　
     レベル: <span id="level">1</span>　
     タイム: <span id="timer">30</span>秒
   </div>
-  <button onclick="startGame()" id="startBtn" class="big-button">ゲーム開始</button>
-  <button onclick="retryGame()" id="retryBtn" class="big-button" style="display:none;">リトライ</button>
-  <button onclick="challengeSimilarProblem()" id="similarBtn" class="big-button" style="display:none;">類似問題にチャレンジ</button>
-  <div id="gameOverPanel" style="display:none; color:red; font-size:1.2em;">ゲームオーバー！</div>
 
   <div id="customRangePanel">
-    <label>問題数: <input type="number" id="totalQuestionsInput" value="10" min="1" style="width:70px; font-size:1.08em;"></label>
-    <button onclick="applyCustomRange()" class="big-button">問題数を適用</button>
+    <button id="startBtn" class="big-button" onclick="startGame()">ゲーム開始</button>
+    <button id="retryBtn" class="big-button" onclick="retryGame()" style="display:none;">もう一度挑戦</button>
+    <label>問題数: <input id="totalQuestionsInput" type="number" value="10" min="1" class="small-input"></label>
+    <button class="big-button" onclick="applyCustomRange()">問題数を適用</button>
     <label>難易度:
-      <select id="difficulty" onchange="setDifficultyRange(this.value)" class="big-select">
+      <select id="difficulty" class="big-select" onchange="setDifficultyRange(this.value)">
         <option value="easy">簡単</option>
         <option value="normal">普通</option>
         <option value="hard">難しい</option>
       </select>
     </label>
-    <label style="margin-left:16px;">問題タイプ:
-      <select id="problemType" onchange="onProblemTypeChange()" class="big-select">
+
+    <label>問題タイプ:
+      <select id="problemType" class="big-select" onchange="onProblemTypeChange()">
         <option value="algebra">計算問題</option>
         <option value="graph">グラフ問題</option>
         <option value="table">表問題</option>
         <option value="mix">ランダム</option>
       </select>
     </label>
+
+    <label>グラフ形式:
+      <select id="graphMode" class="big-select" title="グラフ問題の出題形式">
+        <option value="ab">a と b を答える</option>
+        <option value="eq">式を答える</option>
+      </select>
+    </label>
+
+    <button id="similarBtn" class="big-button" style="display:none;" onclick="challengeSimilarProblem()">類似問題で練習</button>
   </div>
 
-  <div id="modePanel"></div>
   <div id="questionNumber"></div>
   <div id="question"></div>
-  <input type="number" id="answerInput" placeholder="答えを入力">
-  <input type="number" id="answerInputA" placeholder="a（傾き）を入力" style="display:none;">
-  <input type="number" id="answerInputB" placeholder="b（切片）を入力" style="display:none;">
-  <button onclick="checkAnswer()" id="checkBtn" style="display:none;">答えを判定</button>
-  <div id="answerResult"></div>
-  <div id="resultSummary" style="font-weight:bold;color:blue;"></div>
-  <div id="similarProblemsPanel">
-    <h2>間違えた問題のリスト（類似問題のベース）</h2>
-    <ul id="similarProblemsList"></ul>
-  </div>
-  <div id="tablePanel" style="display:none;">
-    <div id="tableProblem"></div>
-    <div id="tableArea"></div>
-    <label>空欄のyの値 <input type="number" id="tableAnswerInput" placeholder="yの値"></label>
-    <button onclick="checkTableAnswer()" id="tableCheckBtn" style="display:none;">答えを判定</button>
-    <div id="tableAnswerResult"></div>
-  </div>
-  <hr>
-  <div id="graphPanel" style="display:none;">
-    <div id="graphProblem"></div>
-    <div class="graph-container">
-      <canvas id="graphCanvas"></canvas>
+
+  <!-- 回答エリア（表示は JS で切替） -->
+  <div style="text-align:center; margin-bottom:10px;">
+    <input id="answerInput" type="number" placeholder="答えを入力" style="display:none;">
+    <input id="answerInputA" type="number" placeholder="a（傾き）" style="display:none;">
+    <input id="answerInputB" type="number" placeholder="b（切片）" style="display:none;">
+    <input id="equationInput" type="text" placeholder="y = ax + b の形で入力" style="display:none; width:40%; padding:6px; border-radius:6px;">
+    <div style="margin-top:8px;">
+      <button id="checkBtn" class="big-button" onclick="checkAnswer()" style="display:none;">判定する</button>
+      <button id="graphCheckBtn" class="big-button" onclick="checkGraphAnswer()" style="display:none;">判定する</button>
+      <button id="hintBtn" class="big-button" onclick="showHint()" style="display:none; background:#ffb74d; color:#3a2300;">ヒント</button>
     </div>
-    <label id="slopeLabel">傾き(a) <input type="number" id="slopeInput" placeholder="傾きを入力"></label>
-    <label id="interceptLabel">切片(b) <input type="number" id="interceptInput" placeholder="切片を入力"></label>
-    <button onclick="checkGraphAnswer()" id="graphCheckBtn" style="display:none;">答えを判定</button>
-    <div id="graphAnswerResult"></div>
   </div>
+
+  <div id="answerResult" style="text-align:center; min-height:28px;"></div>
+  <div id="hintText"></div>
+  <div id="resultSummary" style="font-weight:bold;color:blue; text-align:center; margin-top:8px;"></div>
+
+  <div id="similarProblemsPanel"><h2>間違えた問題（類似練習候補）</h2><ul id="similarProblemsList"></ul></div>
+
+  <!-- 表問題 -->
+  <div id="tablePanel" style="display:none; max-width:980px; margin:12px auto;">
+    <div id="tableArea"></div>
+    <div style="text-align:center; margin-top:8px;">
+      <input id="tableAnswerInput" type="number" placeholder="yの値">
+      <button id="tableCheckBtn" class="big-button" onclick="checkTableAnswer()" style="display:none;">判定する</button>
+      <div id="tableAnswerResult"></div>
+    </div>
+  </div>
+
+  <hr style="max-width:980px; margin:18px auto;">
+
+  <!-- グラフパネル -->
+  <div id="graphPanel">
+    <div id="graphProblem" style="text-align:center; margin-bottom:10px;"></div>
+    <div class="graph-container"><canvas id="graphCanvas"></canvas></div>
+    <div style="text-align:center; margin-top:10px;">
+      <label id="slopeLabel" style="display:none;">傾き (a) <input id="slopeInput" type="number" placeholder="傾き"></label>
+      <label id="interceptLabel" style="display:none; margin-left:10px;">切片 (b) <input id="interceptInput" type="number" placeholder="切片"></label>
+    </div>
+    <div id="graphAnswerResult" style="text-align:center; margin-top:8px;"></div>
+  </div>
+
   <script src="script.js"></script>
 </body>
 </html>
