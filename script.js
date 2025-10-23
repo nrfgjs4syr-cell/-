@@ -134,7 +134,7 @@ function endGame() {
   document.getElementById("tablePanel").style.display = "none";
   document.getElementById("questionNumber").textContent = "";
   document.getElementById("resultSummary").textContent =
-    `終了！正解数: ${correctCount} / ${totalQuestions}（正答率: ${Math.round((correctCount/totalQuestions)*100)}%）`;
+    `ゲーム終了：正解数 ${correctCount} / ${totalQuestions}（正答率: ${Math.round((correctCount/totalQuestions)*100)}%）`;
 }
 
 function generateGameQuestion() {
@@ -188,7 +188,7 @@ function generateAlgebraQuestion() {
   const difficulty = document.getElementById("difficulty") ? document.getElementById("difficulty").value : "easy";
   if (difficulty === "easy") {
     questionType = "ab";
-    document.getElementById("question").textContent = `一次関数の式「y = ax + b」のa（傾き）とb（切片）を答えてください。\n（例：y = 2x + 1）`;
+    document.getElementById("question").textContent = `次の一次関数 y = ax + b において、a（傾き）と b（切片）を答えてください。\n（例：y = 2x + 1）`;
     document.getElementById("answerInput").style.display = "none";
     document.getElementById("answerInputA").style.display = "inline";
     document.getElementById("answerInputB").style.display = "inline";
@@ -197,13 +197,13 @@ function generateAlgebraQuestion() {
     questionType = types[randInt(0, types.length - 1)];
     let questionText = "";
     if (questionType === "y") {
-      questionText = `一次関数のとき、x = ${currentX} の y の値は？`;
+      questionText = `一次関数のとき、x = ${currentX} のときの y の値はいくつですか？`;
       document.getElementById("answerInput").placeholder = "yの値を入力";
     } else if (questionType === "a") {
-      questionText = `x = ${currentX} のとき、y = ${currentY} となる一次関数の傾き a の値は？`;
+      questionText = `x = ${currentX} のとき、y = ${currentY} となる一次関数の傾き a はいくらですか？`;
       document.getElementById("answerInput").placeholder = "傾きを入力";
     } else if (questionType === "b") {
-      questionText = `x = ${currentX} のとき、y = ${currentY} となる一次関数の切片 b の値は？`;
+      questionText = `x = ${currentX} のとき、y = ${currentY} となる一次関数の切片 b はいくらですか？`;
       document.getElementById("answerInput").placeholder = "切片を入力";
     }
     document.getElementById("question").textContent = questionText;
@@ -257,7 +257,7 @@ function generateTableQuestion() {
   });
   tableHtml += "</tr></table>";
 
-  document.getElementById("question").textContent = `次の表の「？」に入るyの値を答えてください。`;
+  document.getElementById("question").textContent = `次の表の「？」に当てはまる y の値を入力してください。`;
   document.getElementById("tableArea").innerHTML = tableHtml;
   document.getElementById("tablePanel").style.display = "block";
   document.getElementById("tableProblem").textContent = "";
@@ -283,7 +283,7 @@ function checkTableAnswer(ansY) {
   const userY = Number(document.getElementById("tableAnswerInput").value);
   const resultDiv = document.getElementById("tableAnswerResult");
   if (userY === ansY) {
-    resultDiv.textContent = "正解！ +10点";
+    resultDiv.textContent = "正解！　+10点";
     resultDiv.style.color = "green";
     score += 10;
     correctCount++;
@@ -291,7 +291,7 @@ function checkTableAnswer(ansY) {
     if (score % 50 === 0) levelUp();
     setTimeout(generateGameQuestion, 1000);
   } else {
-    resultDiv.textContent = `不正解… 正しい答えは ${ansY} です。 -1ライフ`;
+    resultDiv.textContent = `不正解。正しい答えは ${ansY} です。 ライフ -1`;
     resultDiv.style.color = "red";
     addWrongProblem("table", currentA, currentB, null, ansY);
     loseLife();
@@ -367,14 +367,14 @@ function checkAnswer() {
     const userB = Number(document.getElementById("answerInputB").value);
     isCorrect = (userA === currentA && userB === currentB);
     if (isCorrect) {
-      resultDiv.textContent = "正解！ +10点";
+      resultDiv.textContent = "正解！　+10点";
       resultDiv.style.color = "green";
       score += 10;
       correctCount++;
       document.getElementById("score").textContent = score;
       if (score % 50 === 0) levelUp();
     } else {
-      resultDiv.textContent = `不正解… 正しい答えは a=${currentA}、b=${currentB} です。 -1ライフ`;
+      resultDiv.textContent = `不正解。正しい答えは a=${currentA}、b=${currentB} です。 ライフ -1`;
       resultDiv.style.color = "red";
       addWrongProblem(questionType, currentA, currentB, currentX, currentY);
       loseLife();
@@ -398,14 +398,14 @@ function checkAnswer() {
       ansLabel = "切片 b";
     }
     if (isCorrect) {
-      resultDiv.textContent = "正解！ +10点";
+      resultDiv.textContent = "正解！　+10点";
       resultDiv.style.color = "green";
       score += 10;
       correctCount++;
       document.getElementById("score").textContent = score;
       if (score % 50 === 0) levelUp();
     } else {
-      resultDiv.textContent = `不正解… 正しい答えは ${ansLabel} = ${correctAns} です。 -1ライフ`;
+      resultDiv.textContent = `不正解。正しい答えは ${ansLabel} = ${correctAns} です。 ライフ -1`;
       resultDiv.style.color = "red";
       addWrongProblem(questionType, currentA, currentB, currentX, currentY);
       loseLife();
@@ -573,7 +573,7 @@ function checkGraphAnswer() {
   const userIntercept = Number(document.getElementById("interceptInput").value);
   const resultDiv = document.getElementById("graphAnswerResult");
   if (userSlope === graphA && userIntercept === graphB) {
-    resultDiv.textContent = "正解！ +10点";
+    resultDiv.textContent = "正解！　+10点";
     correctCount++;
     score += 10;
     document.getElementById("score").textContent = score;
@@ -582,7 +582,7 @@ function checkGraphAnswer() {
     document.getElementById("timer").textContent = timer;
     setTimeout(generateGameQuestion, 1000);
   } else {
-    resultDiv.textContent = `不正解… 正しい答えは 傾き(a)=${graphA}、切片(b)=${graphB} です。 -1ライフ`;
+    resultDiv.textContent = `不正解。正しい答えは 傾き (a) = ${graphA}、切片 (b) = ${graphB} です。 ライフ -1`;
     resultDiv.style.color = "red";
     addWrongProblem("graph", graphA, graphB, null, null);
     loseLife();
@@ -647,7 +647,7 @@ function showSimilarProblem(type, a, b, x, y) {
     });
     tableHtml += "</tr></table>";
 
-    document.getElementById("question").textContent = `次の表の「？」に入るyの値を答えてください。`;
+    document.getElementById("question").textContent = `次の表の「？」に当てはまる y の値を入力してください。`;
     document.getElementById("tableArea").innerHTML = tableHtml;
     document.getElementById("tablePanel").style.display = "block";
     document.getElementById("tableProblem").textContent = "";
@@ -694,28 +694,28 @@ function showSimilarProblem(type, a, b, x, y) {
 
   // --- algebra系 ---
   if (type === "y") {
-    document.getElementById("question").textContent = `一次関数のとき、x = ${x} の y の値は？`;
+    document.getElementById("question").textContent = `一次関数のとき、x = ${x} の y の値はいくつですか？`;
     document.getElementById("answerInput").placeholder = "yの値を入力";
     document.getElementById("answerInput").style.display = "inline";
     document.getElementById("answerInputA").style.display = "none";
     document.getElementById("answerInputB").style.display = "none";
     document.getElementById("checkBtn").style.display = "inline";
   } else if (type === "a") {
-    document.getElementById("question").textContent = `x = ${x} のとき、y = ${y} となる一次関数の傾き a の値は？`;
+    document.getElementById("question").textContent = `x = ${x} のとき、y = ${y} となる一次関数の傾き a はいくらですか？`;
     document.getElementById("answerInput").placeholder = "傾きを入力";
     document.getElementById("answerInput").style.display = "inline";
     document.getElementById("answerInputA").style.display = "none";
     document.getElementById("answerInputB").style.display = "none";
     document.getElementById("checkBtn").style.display = "inline";
   } else if (type === "b") {
-    document.getElementById("question").textContent = `x = ${x} のとき、y = ${y} となる一次関数の切片 b の値は？`;
+    document.getElementById("question").textContent = `x = ${x} のとき、y = ${y} となる一次関数の切片 b はいくらですか？`;
     document.getElementById("answerInput").placeholder = "切片を入力";
     document.getElementById("answerInput").style.display = "inline";
     document.getElementById("answerInputA").style.display = "none";
     document.getElementById("answerInputB").style.display = "none";
     document.getElementById("checkBtn").style.display = "inline";
   } else if (type === "ab") {
-    document.getElementById("question").textContent = `一次関数の式「y = ax + b」のa（傾き）とb（切片）を答えてください。\n（例：y = 2x + 1）`;
+    document.getElementById("question").textContent = `次の一次関数 y = ax + b の a（傾き）と b（切片）を答えてください。（例：y = 2x + 1）`;
     document.getElementById("answerInput").style.display = "none";
     document.getElementById("answerInputA").style.display = "inline";
     document.getElementById("answerInputB").style.display = "inline";
@@ -743,19 +743,19 @@ function updateWrongProblemsPanel() {
   let html = "";
   wrongProblems.forEach((p, i) => {
     if(p.type === "graph") {
-      html += `<li>グラフ類似: 傾きa=${p.a}, 切片b=${p.b}</li>`;
+      html += `<li>グラフ類似: 傾き a = ${p.a}, 切片 b = ${p.b}</li>`;
     } else if(p.type === "table") {
-      html += `<li>表類似: a=${p.a}, b=${p.b}, 答y=${p.y}</li>`;
+      html += `<li>表類似: a = ${p.a}, b = ${p.b}, 答 y = ${p.y}</li>`;
     } else if(p.type === "y") {
-      html += `<li>y類似: a=${p.a}, b=${p.b}, x=${p.x}, y=${p.y}</li>`;
+      html += `<li>y 類似: a = ${p.a}, b = ${p.b}, x = ${p.x}, y = ${p.y}</li>`;
     } else if(p.type === "a") {
-      html += `<li>a類似: a=${p.a}, b=${p.b}, x=${p.x}, y=${p.y}</li>`;
+      html += `<li>a 類似: a = ${p.a}, b = ${p.b}, x = ${p.x}, y = ${p.y}</li>`;
     } else if(p.type === "b") {
-      html += `<li>b類似: a=${p.a}, b=${p.b}, x=${p.x}, y=${p.y}</li>`;
+      html += `<li>b 類似: a = ${p.a}, b = ${p.b}, x = ${p.x}, y = ${p.y}</li>`;
     } else if(p.type === "ab") {
-      html += `<li>ab類似: a=${p.a}, b=${p.b}</li>`;
+      html += `<li>ab 類似: a = ${p.a}, b = ${p.b}</li>`;
     } else {
-      html += `<li>その他: a=${p.a}, b=${p.b}, x=${p.x}, y=${p.y}</li>`;
+      html += `<li>その他: a = ${p.a}, b = ${p.b}, x = ${p.x}, y = ${p.y}</li>`;
     }
   });
   list.innerHTML = html;
