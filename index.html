@@ -200,14 +200,14 @@
     レベル: <span id="level">1</span>　
     タイム: <span id="timer">30</span>秒
   </div>
-  <button onclick="startGame()" id="startBtn" class="big-button">ゲーム開始</button>
-  <button onclick="retryGame()" id="retryBtn" class="big-button" style="display:none;">リトライ</button>
-  <button onclick="challengeSimilarProblem()" id="similarBtn" class="big-button" style="display:none;">類似問題にチャレンジ</button>
-  <div id="gameOverPanel" style="display:none; color:red; font-size:1.2em;">ゲームオーバー！</div>
+  <button onclick="startGame()" id="startBtn" class="big-button">ゲームを開始</button>
+  <button onclick="retryGame()" id="retryBtn" class="big-button" style="display:none;">もう一度挑戦</button>
+  <button onclick="challengeSimilarProblem()" id="similarBtn" class="big-button" style="display:none;">類似問題で練習</button>
+  <div id="gameOverPanel" style="display:none; color:red; font-size:1.2em;">ゲーム終了</div>
 
   <div id="customRangePanel">
     <label>問題数: <input type="number" id="totalQuestionsInput" value="10" min="1" style="width:70px; font-size:1.08em;"></label>
-    <button onclick="applyCustomRange()" class="big-button">問題数を適用</button>
+    <button onclick="applyCustomRange()" class="big-button">問題数を設定</button>
     <label>難易度:
       <select id="difficulty" onchange="setDifficultyRange(this.value)" class="big-select">
         <option value="easy">簡単</option>
@@ -217,10 +217,10 @@
     </label>
     <label style="margin-left:16px;">問題タイプ:
       <select id="problemType" onchange="onProblemTypeChange()" class="big-select">
-        <option value="algebra">計算問題</option>
-        <option value="graph">グラフ問題</option>
-        <option value="table">表問題</option>
-        <option value="mix">ランダム</option>
+        <option value="algebra">計算（式の計算）</option>
+        <option value="graph">グラフ（a,b を答える）</option>
+        <option value="table">表（値を埋める）</option>
+        <option value="mix">ランダム（混合）</option>
       </select>
     </label>
   </div>
@@ -228,30 +228,30 @@
   <div id="modePanel"></div>
   <div id="questionNumber"></div>
   <div id="question"></div>
-  <input type="number" id="answerInput" placeholder="答えを入力">
+  <input type="number" id="answerInput" placeholder="ここに答えを入力">
   <input type="number" id="answerInputA" placeholder="a（傾き）を入力" style="display:none;">
   <input type="number" id="answerInputB" placeholder="b（切片）を入力" style="display:none;">
-  <button onclick="checkAnswer()" id="checkBtn" style="display:none;">答えを判定</button>
+  <button onclick="checkAnswer()" id="checkBtn" style="display:none;">判定する</button>
   <div id="answerResult"></div>
   <div id="resultSummary" style="font-weight:bold;color:blue;"></div>
   <div id="similarProblemsPanel">
-    <h2>間違えた問題のリスト（類似問題のベース）</h2>
+    <h2>間違えた問題（類似練習の候補）</h2>
     <ul id="similarProblemsList"></ul>
   </div>
   <div id="tablePanel" style="display:none;">
     <div id="tableProblem"></div>
     <div id="tableArea"></div>
-    <label>空欄のyの値 <input type="number" id="tableAnswerInput" placeholder="yの値"></label>
-    <button onclick="checkTableAnswer()" id="tableCheckBtn" style="display:none;">答えを判定</button>
+    <label>空欄の y の値 <input type="number" id="tableAnswerInput" placeholder="yの値"></label>
+    <button onclick="checkTableAnswer()" id="tableCheckBtn" style="display:none;">判定する</button>
     <div id="tableAnswerResult"></div>
   </div>
   <hr>
   <div id="graphPanel" style="display:none;">
     <div id="graphProblem"></div>
     <canvas id="graphCanvas" width="400" height="300"></canvas>
-    <label id="slopeLabel">傾き(a) <input type="number" id="slopeInput" placeholder="傾きを入力"></label>
-    <label id="interceptLabel">切片(b) <input type="number" id="interceptInput" placeholder="切片を入力"></label>
-    <button onclick="checkGraphAnswer()" id="graphCheckBtn" style="display:none;">答えを判定</button>
+    <label id="slopeLabel">傾き (a) <input type="number" id="slopeInput" placeholder="傾きを入力"></label>
+    <label id="interceptLabel">切片 (b) <input type="number" id="interceptInput" placeholder="切片を入力"></label>
+    <button onclick="checkGraphAnswer()" id="graphCheckBtn" style="display:none;">判定する</button>
     <div id="graphAnswerResult"></div>
   </div>
   <script src="script.js"></script>
