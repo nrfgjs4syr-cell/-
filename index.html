@@ -92,28 +92,43 @@
       border: 1px solid #bbb;
       border-radius: 4px;
     }
+
+    /* グラフ領域を大きくする */
     #graphPanel {
       margin-top: 10px;
       margin-bottom: 20px;
       background: #fff;
       border-radius: 8px;
       box-shadow: 0 2px 8px rgba(0,0,32,0.06);
-      padding: 14px 4px 10px 4px;
+      padding: 18px 12px 18px 12px;
       display: none;
+      /* 大きめの最大幅に変更 */
+      max-width: 760px;
+      width: 95%;
     }
     #graphProblem {
       font-size: 1.09em;
       margin-bottom: 6px;
       text-align: center;
     }
+    /* canvas を親の高さに合わせて伸ばす（Chart.js の maintainAspectRatio: false と合わせる） */
+    .graph-container {
+      position: relative;
+      width: 100%;
+      /* 高さを確保（必要に応じて更に大きくできます） */
+      height: 420px;
+    }
     canvas#graphCanvas {
       display: block;
-      margin: 0 auto 12px auto;
-      max-width: 98vw;
-      height: auto;
+      margin: 0 auto;
+      max-width: 100%;
+      /* 高さは親の .graph-container に従う */
+      width: 100% !important;
+      height: 100% !important;
       background: #f9f9f9;
       border-radius: 4px;
     }
+
     #similarProblemsPanel {
       margin-top: 18px;
       margin-bottom: 16px;
@@ -158,6 +173,11 @@
     }
     #tablePanel th {
       background: #e6e8f7;
+    }
+
+    @media (max-width: 900px) {
+      /* モバイルでは高さを縮める */
+      .graph-container { height: 320px; }
     }
     @media (max-width: 700px) {
       #question, #customRangePanel, #graphProblem, #resultSummary, #answerResult {
@@ -248,7 +268,9 @@
   <hr>
   <div id="graphPanel" style="display:none;">
     <div id="graphProblem"></div>
-    <canvas id="graphCanvas" width="400" height="300"></canvas>
+    <div class="graph-container">
+      <canvas id="graphCanvas"></canvas>
+    </div>
     <label id="slopeLabel">傾き(a) <input type="number" id="slopeInput" placeholder="傾きを入力"></label>
     <label id="interceptLabel">切片(b) <input type="number" id="interceptInput" placeholder="切片を入力"></label>
     <button onclick="checkGraphAnswer()" id="graphCheckBtn" style="display:none;">答えを判定</button>
