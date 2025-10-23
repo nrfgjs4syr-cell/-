@@ -300,6 +300,17 @@ function checkTableAnswer(ansY) {
 }
 
 function drawAlgebraGraph(a, b) {
+  // canvas の親コンテナの高さに合わせて大きく表示する
+  const container = document.querySelector('.graph-container');
+  if (container) {
+    // container の高さは CSS で指定しているのでそのままにします（レスポンシブ）
+    // ただし必要なら動的に変更可能:
+    // container.style.height = '480px';
+  }
+
+  graphA = a;
+  graphB = b;
+
   const range = getRanges();
   let xValues = [];
   let yValues = [];
@@ -307,14 +318,19 @@ function drawAlgebraGraph(a, b) {
     xValues.push(x);
     yValues.push(a * x + b);
   }
+  const canvas = document.getElementById('graphCanvas');
+  // 明示的に canvas の幅/高さは CSS の親に従わせる（Chart.js の maintainAspectRatio:false と合わせる）
+  canvas.style.width = '100%';
+  canvas.style.height = '100%';
+
   if (graphChart) graphChart.destroy();
-  const ctx = document.getElementById('graphCanvas').getContext('2d');
+  const ctx = canvas.getContext('2d');
   graphChart = new Chart(ctx, {
     type: 'line',
     data: {
       labels: xValues,
       datasets: [{
-        label: 'y = ax + b',
+        label: '',
         data: yValues,
         borderColor: 'red',
         backgroundColor: 'rgba(255, 99, 132, 0.2)',
@@ -326,26 +342,95 @@ function drawAlgebraGraph(a, b) {
       }]
     },
     options: {
+      responsive: true,
+      maintainAspectRatio: false, // ← canvas の親要素に合わせて伸縮する
       plugins: {
         legend: {
-          display: true,
-          labels: { color: 'black', font: { size: 16 } }
+          display: false
         }
       },
       scales: {
         x: {
-          title: { display: true, text: 'x軸', font: { size: 20 } },
-          grid: { color: 'rgba(0,0,0,0.2)' },
+          title: { display: true, text: 'x軸', font: { size: 16 } },
+          grid: { color: 'rgba(0,0,0,0.15)' },
           ticks: { color: 'black', font: { size: 14 } }
         },
         y: {
-          title: { display: true, text: 'y軸', font: { size: 20 } },
-          grid: { color: 'rgba(0,0,0,0.2)' },
+          title: { display: true, text: 'y軸', font: { size: 16 } },
+          grid: { color: 'rgba(0,0,0,0.15)' },
           ticks: { color: 'black', font: { size: 14 } }
         }
       },
       animation: false
-    }
+    },
+    plugins: [{
+      id: 'arrow-plugin',
+      afterDraw: chart => {
+        const ctx = chart.ctx;
+        const chartArea = chart.chartArea;
+        const xZero = chart.scales.x.getPixelForValue(0);
+        const yZero = chart.scales.y.getPixelForValue(0);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(xZero, yZero);
+        ctx.lineTo(chartArea.right - 15, yZero);
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(chartArea.right - 15, yZero);
+        ctx.lineTo(chartArea.right - 25, yZero - 7);
+        ctx.lineTo(chartArea.right - 25, yZero + 7);
+        ctx.closePath();
+        ctx.fillStyle = "black";
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(xZero, yZero);
+        ctx.lineTo(chartArea.left + 15, yZero);
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(chartArea.left + 15, yZero);
+        ctx.lineTo(chartArea.left + 25, yZero - 7);
+        ctx.lineTo(chartArea.left + 25, yZero + 7);
+        ctx.closePath();
+        ctx.fillStyle = "black";
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(xZero, yZero);
+        ctx.lineTo(xZero, chartArea.top + 15);
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(xZero, chartArea.top + 15);
+        ctx.lineTo(xZero - 7, chartArea.top + 25);
+        ctx.lineTo(xZero + 7, chartArea.top + 25);
+        ctx.closePath();
+        ctx.fillStyle = "black";
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(xZero, yZero);
+        ctx.lineTo(xZero, chartArea.bottom - 15);
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(xZero, chartArea.bottom - 15);
+        ctx.lineTo(xZero - 7, chartArea.bottom - 25);
+        ctx.lineTo(xZero + 7, chartArea.bottom - 25);
+        ctx.closePath();
+        ctx.fillStyle = "black";
+        ctx.fill();
+
+        ctx.restore();
+      }
+    }]
   });
 }
 
@@ -449,116 +534,9 @@ function generateGraphQuestion(isGameMode = false) {
     yValues.push(graphA * x + graphB);
   }
 
-  if (graphChart) graphChart.destroy();
-  const ctx = document.getElementById('graphCanvas').getContext('2d');
-  graphChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: xValues,
-      datasets: [{
-        label: 'y = ax + b',
-        data: yValues,
-        borderColor: 'red',
-        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-        fill: false,
-        pointRadius: 6,
-        pointBackgroundColor: 'blue',
-        borderWidth: 4,
-        tension: 0
-      }]
-    },
-    options: {
-      plugins: {
-        legend: {
-          display: true,
-          labels: { color: 'black', font: { size: 16 } }
-        }
-      },
-      scales: {
-        x: {
-          title: { display: true, text: 'x軸', font: { size: 20 } },
-          grid: { color: 'rgba(0,0,0,0.2)' },
-          ticks: { color: 'black', font: { size: 14 } }
-        },
-        y: {
-          title: { display: true, text: 'y軸', font: { size: 20 } },
-          grid: { color: 'rgba(0,0,0,0.2)' },
-          ticks: { color: 'black', font: { size: 14 } }
-        }
-      },
-      animation: false
-    },
-    plugins: [{
-      id: 'arrow-plugin',
-      afterDraw: chart => {
-        const ctx = chart.ctx;
-        const chartArea = chart.chartArea;
-        const xZero = chart.scales.x.getPixelForValue(0);
-        const yZero = chart.scales.y.getPixelForValue(0);
+  // draw using the main drawAlgebraGraph to get large canvas behavior
+  drawAlgebraGraph(graphA, graphB);
 
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(xZero, yZero);
-        ctx.lineTo(chartArea.right - 15, yZero);
-        ctx.strokeStyle = "black";
-        ctx.lineWidth = 3;
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(chartArea.right - 15, yZero);
-        ctx.lineTo(chartArea.right - 25, yZero - 7);
-        ctx.lineTo(chartArea.right - 25, yZero + 7);
-        ctx.closePath();
-        ctx.fillStyle = "black";
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.moveTo(xZero, yZero);
-        ctx.lineTo(chartArea.left + 15, yZero);
-        ctx.strokeStyle = "black";
-        ctx.lineWidth = 3;
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(chartArea.left + 15, yZero);
-        ctx.lineTo(chartArea.left + 25, yZero - 7);
-        ctx.lineTo(chartArea.left + 25, yZero + 7);
-        ctx.closePath();
-        ctx.fillStyle = "black";
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.moveTo(xZero, yZero);
-        ctx.lineTo(xZero, chartArea.top + 15);
-        ctx.strokeStyle = "black";
-        ctx.lineWidth = 3;
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(xZero, chartArea.top + 15);
-        ctx.lineTo(xZero - 7, chartArea.top + 25);
-        ctx.lineTo(xZero + 7, chartArea.top + 25);
-        ctx.closePath();
-        ctx.fillStyle = "black";
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.moveTo(xZero, yZero);
-        ctx.lineTo(xZero, chartArea.bottom - 15);
-        ctx.strokeStyle = "black";
-        ctx.lineWidth = 3;
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(xZero, chartArea.bottom - 15);
-        ctx.lineTo(xZero - 7, chartArea.bottom - 25);
-        ctx.lineTo(xZero + 7, chartArea.bottom - 25);
-        ctx.closePath();
-        ctx.fillStyle = "black";
-        ctx.fill();
-
-        ctx.restore();
-      }
-    }]
-  });
-
-  // グラフ問題：式は表示しない
   document.getElementById("question").textContent = "";
   document.getElementById("graphProblem").textContent =
     `下のグラフを見て答えてください。`;
