@@ -1,6 +1,7 @@
-// 一次関数ゲーム - 完全版スクリプト（変化の割合(rate) 問題を追加）
+// 一次関数ゲーム - 修正版スクリプト（endGame 修正 + イベントバインド追加）
+// これまでの機能（計算問題拡張、グラフ拡大、変化の割合など）を含みます。
 
-// --- 既存の状態変数 ---
+// --- 状態変数 ---
 let currentA = 1, currentB = 0, currentX = 0, currentY = 0;
 let questionType = "y"; // y/a/b/ab/2pt/eq/rate
 let graphA = 1, graphB = 0, graphChart = null;
@@ -53,9 +54,9 @@ function startGame() {
   document.getElementById("life").textContent = life;
   document.getElementById("level").textContent = level;
   document.getElementById("timer").textContent = timer;
-  document.getElementById("startBtn").style.display = "none";
-  document.getElementById("retryBtn").style.display = "none";
-  document.getElementById("similarBtn").style.display = wrongProblems.length > 0 ? "inline-block" : "none";
+  const startBtn = document.getElementById("startBtn"); if (startBtn) startBtn.style.display = "none";
+  const retryBtn = document.getElementById("retryBtn"); if (retryBtn) retryBtn.style.display = "none";
+  const similarBtn = document.getElementById("similarBtn"); if (similarBtn) similarBtn.style.display = wrongProblems.length > 0 ? "inline-block" : "none";
   updateWrongProblemsPanel();
   applyCustomRange();
   generateGameQuestion();
@@ -67,37 +68,58 @@ function startTimer() {
   if (timerInterval) clearInterval(timerInterval);
   timerInterval = setInterval(()=>{
     if(!gameActive){ clearInterval(timerInterval); return; }
-    timer--; document.getElementById("timer").textContent = timer;
+    timer--; const tEl = document.getElementById("timer"); if (tEl) tEl.textContent = timer;
     if(timer <= 0) loseLife();
   }, 1000);
 }
 
 function loseLife() {
-  life--; document.getElementById("life").textContent = life;
-  timer = window.timeLimit; document.getElementById("timer").textContent = timer;
+  life--; const lifeEl = document.getElementById("life"); if (lifeEl) lifeEl.textContent = life;
+  timer = window.timeLimit; const tEl = document.getElementById("timer"); if (tEl) tEl.textContent = timer;
   if (life <= 0) endGame();
   else setTimeout(generateGameQuestion, 800);
 }
 
 function endGame() {
-  gameActive = false; clearInterval(timerInterval);
-  document.getElementById("gameOverPanel")?.style.display = "block";
-  document.getElementById("retryBtn").style.display = "inline-block";
-  document.getElementById("checkBtn").style.display = "none";
-  document.getElementById("graphCheckBtn").style.display = "none";
-  document.getElementById("graphPanel").style.display = "none";
-  document.getElementById("tablePanel").style.display = "none";
-  document.getElementById("questionNumber").textContent = "";
-  document.getElementById("resultSummary").textContent = `ゲーム終了：正解 ${correctCount} / ${totalQuestions}（${Math.round((correctCount/totalQuestions)*100)}%）`;
+  gameActive = false;
+  clearInterval(timerInterval);
+
+  const goPanel = document.getElementById("gameOverPanel");
+  if (goPanel) goPanel.style.display = "block";
+
+  const retryBtn = document.getElementById("retryBtn");
+  if (retryBtn) retryBtn.style.display = "inline-block";
+
+  const checkBtn = document.getElementById("checkBtn");
+  if (checkBtn) checkBtn.style.display = "none";
+
+  const graphCheckBtn = document.getElementById("graphCheckBtn");
+  if (graphCheckBtn) graphCheckBtn.style.display = "none";
+
+  const graphPanel = document.getElementById("graphPanel");
+  if (graphPanel) graphPanel.style.display = "none";
+
+  const tablePanel = document.getElementById("tablePanel");
+  if (tablePanel) tablePanel.style.display = "none";
+
+  const qn = document.getElementById("questionNumber");
+  if (qn) qn.textContent = "";
+
+  const resultSummary = document.getElementById("resultSummary");
+  if (resultSummary) {
+    resultSummary.textContent =
+      `終了！正解数: ${correctCount} / ${totalQuestions}（正答率: ${Math.round((correctCount/totalQuestions)*100)}%）`;
+  }
 }
 
-// --- 問題の生成・切替 ---
+// --- 出題ロジック ---
 function generateGameQuestion() {
   if (!gameActive) return;
   if (currentQuestion >= totalQuestions) { endGame(); return; }
 
   currentQuestion++;
-  document.getElementById("questionNumber").textContent = `【第${currentQuestion}問 / 全${totalQuestions}問】`;
+  const qnEl = document.getElementById("questionNumber");
+  if (qnEl) qnEl.textContent = `【第${currentQuestion}問 / 全${totalQuestions}問】`;
 
   hideAllAnswerUI();
 
@@ -114,22 +136,20 @@ function generateGameQuestion() {
 }
 
 function hideAllAnswerUI() {
-  document.getElementById("answerResult").textContent = "";
-  document.getElementById("hintText").style.display = "none";
-  document.getElementById("hintText").textContent = "";
+  const ar = document.getElementById("answerResult"); if (ar) ar.textContent = "";
+  const hint = document.getElementById("hintText"); if (hint) { hint.style.display = "none"; hint.textContent = ""; }
   ["answerInput","answerInputA","answerInputB","equationInput","slopeInput","interceptInput"].forEach(id=>{
-    const el = document.getElementById(id);
-    if (el) el.style.display = "none";
+    const el = document.getElementById(id); if (el) el.style.display = "none";
   });
-  document.getElementById("checkBtn").style.display = "none";
-  document.getElementById("graphCheckBtn").style.display = "none";
-  document.getElementById("hintBtn").style.display = "none";
-  document.getElementById("tableCheckBtn")?.style.display = "none";
-  document.getElementById("graphPanel").style.display = "none";
-  document.getElementById("tablePanel").style.display = "none";
+  const cb = document.getElementById("checkBtn"); if (cb) cb.style.display = "none";
+  const gcb = document.getElementById("graphCheckBtn"); if (gcb) gcb.style.display = "none";
+  const hb = document.getElementById("hintBtn"); if (hb) hb.style.display = "none";
+  const tcb = document.getElementById("tableCheckBtn"); if (tcb) tcb.style.display = "none";
+  const gp = document.getElementById("graphPanel"); if (gp) gp.style.display = "none";
+  const tp = document.getElementById("tablePanel"); if (tp) tp.style.display = "none";
 }
 
-// ----- 改善された計算問題（algebra） -----
+// ----- 改良された計算問題 -----
 function generateAlgebraQuestionImproved() {
   if (!gameActive) return;
   const range = getRanges();
@@ -153,31 +173,31 @@ function generateAlgebraQuestionImproved() {
   if (questionType === "y") {
     currentX = randInt(range.xMin, range.xMax);
     currentY = currentA * currentX + currentB;
-    document.getElementById("question").textContent = `一次関数 y = ax + b のとき、x = ${currentX} の y の値はいくつですか？`;
-    document.getElementById("answerInput").style.display = "inline";
-    document.getElementById("checkBtn").style.display = "inline";
-    document.getElementById("hintBtn").style.display = "inline";
+    const qEl = document.getElementById("question"); if (qEl) qEl.textContent = `一次関数 y = ax + b のとき、x = ${currentX} の y の値はいくつですか？`;
+    const ai = document.getElementById("answerInput"); if (ai) ai.style.display = "inline";
+    const cb = document.getElementById("checkBtn"); if (cb) cb.style.display = "inline";
+    const hb = document.getElementById("hintBtn"); if (hb) hb.style.display = "inline";
   } else if (questionType === "a") {
     currentX = randInt(range.xMin || -5, range.xMax || 5);
     currentY = currentA * currentX + currentB;
-    document.getElementById("question").textContent = `x = ${currentX} のとき、y = ${currentY} となる一次関数の傾き a を求めなさい。`;
-    document.getElementById("answerInput").style.display = "inline";
-    document.getElementById("checkBtn").style.display = "inline";
-    document.getElementById("hintBtn").style.display = "inline";
+    const qEl = document.getElementById("question"); if (qEl) qEl.textContent = `x = ${currentX} のとき、y = ${currentY} となる一次関数の傾き a を求めなさい。`;
+    const ai = document.getElementById("answerInput"); if (ai) ai.style.display = "inline";
+    const cb = document.getElementById("checkBtn"); if (cb) cb.style.display = "inline";
+    const hb = document.getElementById("hintBtn"); if (hb) hb.style.display = "inline";
   } else if (questionType === "b") {
     currentX = randInt(range.xMin || -5, range.xMax || 5);
     currentY = currentA * currentX + currentB;
-    document.getElementById("question").textContent = `x = ${currentX} のとき、y = ${currentY} となる一次関数の切片 b を求めなさい。`;
-    document.getElementById("answerInput").style.display = "inline";
-    document.getElementById("checkBtn").style.display = "inline";
-    document.getElementById("hintBtn").style.display = "inline";
+    const qEl = document.getElementById("question"); if (qEl) qEl.textContent = `x = ${currentX} のとき、y = ${currentY} となる一次関数の切片 b を求めなさい。`;
+    const ai = document.getElementById("answerInput"); if (ai) ai.style.display = "inline";
+    const cb = document.getElementById("checkBtn"); if (cb) cb.style.display = "inline";
+    const hb = document.getElementById("hintBtn"); if (hb) hb.style.display = "inline";
   } else if (questionType === "ab") {
-    document.getElementById("question").textContent = `次の一次関数の a（傾き）と b（切片）を答えてください。`;
-    document.getElementById("answerInputA").style.display = "inline";
-    document.getElementById("answerInputB").style.display = "inline";
-    document.getElementById("checkBtn").style.display = "inline";
-    document.getElementById("hintBtn").style.display = "inline";
-    document.getElementById("graphPanel").style.display = "block";
+    const qEl = document.getElementById("question"); if (qEl) qEl.textContent = `次の一次関数の a（傾き）と b（切片）を答えてください。`;
+    const aEl = document.getElementById("answerInputA"); if (aEl) aEl.style.display = "inline";
+    const bEl = document.getElementById("answerInputB"); if (bEl) bEl.style.display = "inline";
+    const cb = document.getElementById("checkBtn"); if (cb) cb.style.display = "inline";
+    const hb = document.getElementById("hintBtn"); if (hb) hb.style.display = "inline";
+    const gp = document.getElementById("graphPanel"); if (gp) gp.style.display = "block";
     drawAlgebraGraph(currentA, currentB);
     return;
   } else if (questionType === "2pt") {
@@ -187,58 +207,51 @@ function generateAlgebraQuestionImproved() {
     const y1 = currentA * x1 + currentB;
     const y2 = currentA * x2 + currentB;
     currentA = (y2 - y1) / (x2 - x1);
-    document.getElementById("question").textContent = `点 (${x1}, ${y1}) と (${x2}, ${y2}) を通る直線の傾き a を求めなさい。`;
-    document.getElementById("answerInput").style.display = "inline";
-    document.getElementById("checkBtn").style.display = "inline";
-    document.getElementById("hintBtn").style.display = "inline";
+    const qEl = document.getElementById("question"); if (qEl) qEl.textContent = `点 (${x1}, ${y1}) と (${x2}, ${y2}) を通る直線の傾き a を求めなさい。`;
+    const ai = document.getElementById("answerInput"); if (ai) ai.style.display = "inline";
+    const cb = document.getElementById("checkBtn"); if (cb) cb.style.display = "inline";
+    const hb = document.getElementById("hintBtn"); if (hb) hb.style.display = "inline";
     return;
   } else if (questionType === "eq") {
-    document.getElementById("question").textContent = `下のグラフを見て、一次関数の式 y = ax + b の a と b を答えてください。`;
-    document.getElementById("answerInputA").style.display = "inline";
-    document.getElementById("answerInputB").style.display = "inline";
-    document.getElementById("checkBtn").style.display = "inline";
-    document.getElementById("hintBtn").style.display = "inline";
-    document.getElementById("graphPanel").style.display = "block";
+    const qEl = document.getElementById("question"); if (qEl) qEl.textContent = `下のグラフを見て、一次関数の式 y = ax + b の a と b を答えてください。`;
+    const aEl = document.getElementById("answerInputA"); if (aEl) aEl.style.display = "inline";
+    const bEl = document.getElementById("answerInputB"); if (bEl) bEl.style.display = "inline";
+    const cb = document.getElementById("checkBtn"); if (cb) cb.style.display = "inline";
+    const hb = document.getElementById("hintBtn"); if (hb) hb.style.display = "inline";
+    const gp = document.getElementById("graphPanel"); if (gp) gp.style.display = "block";
     drawAlgebraGraph(currentA, currentB);
     return;
   }
 
-  document.getElementById("graphPanel").style.display = "block";
+  const gp = document.getElementById("graphPanel"); if (gp) gp.style.display = "block";
   drawAlgebraGraph(currentA, currentB);
 }
 
-// ----- ここから追加：変化の割合(rate) 問題 -----
+// ----- 変化の割合(rate) -----
 function generateRateQuestion() {
   if (!gameActive) return;
   const range = getRanges();
-  // 作問用に一次関数を生成してから2点をとる（整数点で見やすく）
-  let a = randInt(range.aMin, range.aMax);
-  if (a === 0) a = 1;
+  let a = randInt(range.aMin, range.aMax); if (a === 0) a = 1;
   let b = randInt(range.bMin, range.bMax);
-  // 2つの異なる x を選ぶ
   let x1 = randInt(range.xMin, range.xMax);
   let x2 = randInt(range.xMin, range.xMax);
   while (x2 === x1) x2 = randInt(range.xMin, range.xMax);
   const y1 = a * x1 + b;
   const y2 = a * x2 + b;
-
-  // 正解（変化の割合 Δy/Δx = (y2-y1)/(x2-x1)）を currentA に保存して判定に使う
   currentA = (y2 - y1) / (x2 - x1);
   currentB = null; currentX = null; currentY = null;
   questionType = "rate";
 
-  document.getElementById("question").textContent = `点 (${x1}, ${y1}) と (${x2}, ${y2}) の変化の割合（Δy/Δx）を求めなさい。`;
-  document.getElementById("answerInput").style.display = "inline";
-  document.getElementById("checkBtn").style.display = "inline";
-  document.getElementById("hintBtn").style.display = "inline";
+  const qEl = document.getElementById("question"); if (qEl) qEl.textContent = `点 (${x1}, ${y1}) と (${x2}, ${y2}) の変化の割合（Δy/Δx）を求めなさい。`;
+  const ai = document.getElementById("answerInput"); if (ai) ai.style.display = "inline";
+  const cb = document.getElementById("checkBtn"); if (cb) cb.style.display = "inline";
+  const hb = document.getElementById("hintBtn"); if (hb) hb.style.display = "inline";
 
-  // グラフも表示して視覚的に確認できるようにする
-  document.getElementById("graphPanel").style.display = "block";
+  const gp = document.getElementById("graphPanel"); if (gp) gp.style.display = "block";
   drawAlgebraGraph(a, b);
 }
-// ----- 追加ここまで -----
 
-// ----- 判定（計算問題） -----
+// ----- 判定（計算 / rate 等） -----
 function checkAnswer() {
   if (!gameActive) return;
   if (currentGameQuestionType === "graph" && document.getElementById("graphPanel").style.display === "block") {
@@ -258,8 +271,7 @@ function checkAnswer() {
     if (approxEqual(userA, currentA, tol) && (currentB === null ? true : approxEqual(userB, currentB, tol))) {
       handleCorrect();
     } else {
-      resultDiv.textContent = `不正解… 正しい答えは a=${currentA}${currentB !== null ? `、b=${currentB}` : ""} です。`;
-      resultDiv.style.color = "red";
+      if (resultDiv) { resultDiv.textContent = `不正解… 正しい答えは a=${currentA}${currentB !== null ? `、b=${currentB}` : ""} です。`; resultDiv.style.color = "red"; }
       addWrongProblem("ab", currentA, currentB, null, null);
       loseLife();
     }
@@ -269,7 +281,7 @@ function checkAnswer() {
   const raw = document.getElementById("answerInput").value;
   const userVal = Number(raw);
   if (raw === "" || isNaN(userVal)) {
-    document.getElementById("answerResult").textContent = "数値を入力してください。";
+    const ar = document.getElementById("answerResult"); if (ar) ar.textContent = "数値を入力してください。";
     return;
   }
 
@@ -278,17 +290,16 @@ function checkAnswer() {
   else if (questionType === "a") correctVal = currentA;
   else if (questionType === "b") correctVal = currentB;
   else if (questionType === "2pt") correctVal = currentA;
-  else if (questionType === "rate") correctVal = currentA; // 変化の割合の判定
+  else if (questionType === "rate") correctVal = currentA;
 
   if (correctVal === null || correctVal === undefined) {
-    document.getElementById("answerResult").textContent = "内部エラー：正解が未設定です。";
+    const ar = document.getElementById("answerResult"); if (ar) ar.textContent = "内部エラー：正解が未設定です。";
     return;
   }
 
   if (approxEqual(userVal, correctVal, tol)) handleCorrect();
   else {
-    document.getElementById("answerResult").textContent = `不正解… 正しい答えは ${correctVal} です。`;
-    document.getElementById("answerResult").style.color = "red";
+    const ar = document.getElementById("answerResult"); if (ar) { ar.textContent = `不正解… 正しい答えは ${correctVal} です。`; ar.style.color = "red"; }
     addWrongProblem(questionType, currentA, currentB, currentX, currentY);
     loseLife();
   }
@@ -297,10 +308,10 @@ function checkAnswer() {
 function approxEqual(a, b, tol) { return Math.abs(Number(a) - Number(b)) <= tol; }
 function handleCorrect() {
   const rd = document.getElementById("answerResult");
-  rd.textContent = "正解！ +10点"; rd.style.color = "green";
-  score += 10; correctCount++; document.getElementById("score").textContent = score;
+  if (rd) { rd.textContent = "正解！ +10点"; rd.style.color = "green"; }
+  score += 10; correctCount++; const sEl = document.getElementById("score"); if (sEl) sEl.textContent = score;
   if (score % 50 === 0) levelUp();
-  timer = window.timeLimit; document.getElementById("timer").textContent = timer;
+  timer = window.timeLimit; const tEl = document.getElementById("timer"); if (tEl) tEl.textContent = timer;
   setTimeout(generateGameQuestion, 800);
 }
 
@@ -314,7 +325,7 @@ function showHint() {
   else if (questionType === "2pt") text += `傾きは (y2 - y1) / (x2 - x1) です。`;
   else if (questionType === "rate") text += `変化の割合は Δy / Δx = (y2 - y1) / (x2 - x1) で求められます。`;
   else text += `まず式に代入してみましょう。`;
-  hint.textContent = text; hint.style.display = "block";
+  if (hint) { hint.textContent = text; hint.style.display = "block"; }
 }
 
 // ----- グラフ描画（Chart.js） -----
@@ -362,10 +373,8 @@ function drawAlgebraGraph(a, b) {
         const xZero = chart.scales.x.getPixelForValue(0);
         const yZero = chart.scales.y.getPixelForValue(0);
         ctx.save();
-        // x arrow
         ctx.beginPath(); ctx.moveTo(xZero, yZero); ctx.lineTo(area.right - 15, yZero); ctx.strokeStyle = "black"; ctx.lineWidth = 2; ctx.stroke();
         ctx.beginPath(); ctx.moveTo(area.right - 15, yZero); ctx.lineTo(area.right - 25, yZero - 7); ctx.lineTo(area.right - 25, yZero + 7); ctx.closePath(); ctx.fill();
-        // y arrow
         ctx.beginPath(); ctx.moveTo(xZero, yZero); ctx.lineTo(xZero, area.top + 15); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(xZero, area.top + 15); ctx.lineTo(xZero - 7, area.top + 25); ctx.lineTo(xZero + 7, area.top + 25); ctx.closePath(); ctx.fill();
         ctx.restore();
@@ -382,24 +391,23 @@ function generateGraphQuestion(isGameMode = false) {
   drawAlgebraGraph(graphA, graphB);
 
   const graphMode = document.getElementById("graphMode").value || "ab";
-  document.getElementById("graphProblem").textContent = `下のグラフを見て答えてください。`;
+  const gp = document.getElementById("graphProblem"); if (gp) gp.textContent = `下のグラフを見て答えてください。`;
   if (graphMode === "ab") {
-    document.getElementById("slopeLabel").style.display = "inline";
-    document.getElementById("interceptLabel").style.display = "inline";
-    document.getElementById("slopeInput").value = "";
-    document.getElementById("interceptInput").value = "";
-    document.getElementById("graphCheckBtn").style.display = "inline";
-    document.getElementById("equationInput").style.display = "none";
+    const sl = document.getElementById("slopeLabel"); if (sl) sl.style.display = "inline";
+    const il = document.getElementById("interceptLabel"); if (il) il.style.display = "inline";
+    const si = document.getElementById("slopeInput"); if (si) si.value = "";
+    const ii = document.getElementById("interceptInput"); if (ii) ii.value = "";
+    const gcb = document.getElementById("graphCheckBtn"); if (gcb) gcb.style.display = "inline";
+    const eq = document.getElementById("equationInput"); if (eq) eq.style.display = "none";
   } else {
-    document.getElementById("slopeLabel").style.display = "none";
-    document.getElementById("interceptLabel").style.display = "none";
-    document.getElementById("equationInput").style.display = "inline";
-    document.getElementById("equationInput").value = "";
-    document.getElementById("graphCheckBtn").style.display = "inline";
+    const sl = document.getElementById("slopeLabel"); if (sl) sl.style.display = "none";
+    const il = document.getElementById("interceptLabel"); if (il) il.style.display = "none";
+    const eq = document.getElementById("equationInput"); if (eq) { eq.style.display = "inline"; eq.value = ""; }
+    const gcb = document.getElementById("graphCheckBtn"); if (gcb) gcb.style.display = "inline";
   }
 }
 
-// ----- graph 判定（a,b or 式） -----
+// ----- graph 判定 -----
 function checkGraphAnswer() {
   const graphMode = document.getElementById("graphMode").value || "ab";
   const resultDiv = document.getElementById("graphAnswerResult");
@@ -407,11 +415,11 @@ function checkGraphAnswer() {
     const userA = Number(document.getElementById("slopeInput").value);
     const userB = Number(document.getElementById("interceptInput").value);
     if (userA === graphA && userB === graphB) {
-      resultDiv.textContent = "正解！ +10点"; resultDiv.style.color = "green";
-      score += 10; correctCount++; document.getElementById("score").textContent = score;
+      if (resultDiv) { resultDiv.textContent = "正解！ +10点"; resultDiv.style.color = "green"; }
+      score += 10; correctCount++; const sEl = document.getElementById("score"); if (sEl) sEl.textContent = score;
       setTimeout(generateGameQuestion, 800);
     } else {
-      resultDiv.textContent = `不正解… 正しい答えは 傾き(a)=${graphA}、切片(b)=${graphB} です。`; resultDiv.style.color = "red";
+      if (resultDiv) { resultDiv.textContent = `不正解… 正しい答えは 傾き(a)=${graphA}、切片(b)=${graphB} です。`; resultDiv.style.color = "red"; }
       addWrongProblem("graph", graphA, graphB, null, null); loseLife();
     }
     return;
@@ -421,11 +429,11 @@ function checkGraphAnswer() {
   const userNorm = normalizeEquationString(userRaw);
   const correctNorm = normalizeEquationString(formatFunctionString(graphA, graphB));
   if (userNorm && userNorm === correctNorm) {
-    resultDiv.textContent = "正解！ +10点"; resultDiv.style.color = "green";
-    score += 10; correctCount++; document.getElementById("score").textContent = score;
+    if (resultDiv) { resultDiv.textContent = "正解！ +10点"; resultDiv.style.color = "green"; }
+    score += 10; correctCount++; const sEl = document.getElementById("score"); if (sEl) sEl.textContent = score;
     setTimeout(generateGameQuestion, 800);
   } else {
-    resultDiv.textContent = `不正解… 正しい式は ${formatFunctionString(graphA, graphB)} です。`; resultDiv.style.color = "red";
+    if (resultDiv) { resultDiv.textContent = `不正解… 正しい式は ${formatFunctionString(graphA, graphB)} です。`; resultDiv.style.color = "red"; }
     addWrongProblem("graph", graphA, graphB, null, null); loseLife();
   }
 }
@@ -449,7 +457,7 @@ function formatFunctionString(a,b) {
   return `y=${a}x${b}`;
 }
 
-// ----- 表問題 ----- 
+// ----- 表問題 -----
 function generateTableQuestion() {
   const range = getRanges();
   currentA = randInt(range.aMin, range.aMax);
@@ -468,12 +476,11 @@ function generateTableQuestion() {
   tableHtml += `</tr><tr><th style="background:#e6e8f7;padding:8px 12px;border:1px solid #aaa;">y</th>`;
   yVals.forEach((y,i)=> tableHtml += `<td style="border:1px solid #aaa;padding:8px 12px;">${i===blankIdx?'<b>？</b>':y}</td>`);
   tableHtml += `</tr></table>`;
-  document.getElementById("tableArea").innerHTML = tableHtml;
-  document.getElementById("tablePanel").style.display = "block";
-  document.getElementById("tableAnswerInput").value = "";
-  document.getElementById("tableCheckBtn").style.display = "inline-block";
-  document.getElementById("tableCheckBtn").onclick = ()=> checkTableAnswer(answerY);
-  document.getElementById("graphPanel").style.display = "block";
+  const ta = document.getElementById("tableArea"); if (ta) ta.innerHTML = tableHtml;
+  const tp = document.getElementById("tablePanel"); if (tp) tp.style.display = "block";
+  const tain = document.getElementById("tableAnswerInput"); if (tain) tain.value = "";
+  const tcb = document.getElementById("tableCheckBtn"); if (tcb) { tcb.style.display = "inline-block"; tcb.onclick = ()=> checkTableAnswer(answerY); }
+  const gp = document.getElementById("graphPanel"); if (gp) gp.style.display = "block";
   drawAlgebraGraph(currentA, currentB);
 }
 
@@ -481,11 +488,11 @@ function checkTableAnswer(ansY) {
   const userY = Number(document.getElementById("tableAnswerInput").value);
   const rd = document.getElementById("tableAnswerResult");
   if (userY === ansY) {
-    rd.textContent = "正解！ +10点"; rd.style.color = "green";
-    score += 10; correctCount++; document.getElementById("score").textContent = score;
+    if (rd) { rd.textContent = "正解！ +10点"; rd.style.color = "green"; }
+    score += 10; correctCount++; const sEl = document.getElementById("score"); if (sEl) sEl.textContent = score;
     setTimeout(generateGameQuestion, 800);
   } else {
-    rd.textContent = `不正解… 正しい答えは ${ansY} です。`; rd.style.color = "red";
+    if (rd) { rd.textContent = `不正解… 正しい答えは ${ansY} です。`; rd.style.color = "red"; }
     addWrongProblem("table", currentA, currentB, null, ansY); loseLife();
   }
 }
@@ -494,7 +501,7 @@ function checkTableAnswer(ansY) {
 function addWrongProblem(type,a,b,x,y) {
   wrongProblems.push({type,a,b,x,y});
   updateWrongProblemsPanel();
-  document.getElementById("similarBtn").style.display = wrongProblems.length > 0 ? "inline-block" : "none";
+  const similarBtn = document.getElementById("similarBtn"); if (similarBtn) similarBtn.style.display = wrongProblems.length > 0 ? "inline-block" : "none";
 }
 
 function challengeSimilarProblem() {
@@ -521,75 +528,72 @@ function showSimilarProblem(type,a,b,x,y) {
     tableHtml += `</tr><tr><th style="background:#e6e8f7;padding:8px 12px;border:1px solid #aaa;">y</th>`;
     yVals.forEach((yv,i)=> tableHtml += `<td style="border:1px solid #aaa;padding:8px 12px;">${i===blankIdx?'<b>？</b>':yv}</td>`);
     tableHtml += `</tr></table>`;
-    document.getElementById("tableArea").innerHTML = tableHtml;
-    document.getElementById("tablePanel").style.display = "block";
-    document.getElementById("tableAnswerInput").value = "";
-    document.getElementById("tableCheckBtn").style.display = "inline-block";
-    document.getElementById("tableCheckBtn").onclick = ()=> checkTableAnswer(answerY);
-    document.getElementById("graphPanel").style.display = "block";
+    const ta = document.getElementById("tableArea"); if (ta) ta.innerHTML = tableHtml;
+    const tp = document.getElementById("tablePanel"); if (tp) tp.style.display = "block";
+    const tain = document.getElementById("tableAnswerInput"); if (tain) tain.value = "";
+    const tcb = document.getElementById("tableCheckBtn"); if (tcb) { tcb.style.display = "inline-block"; tcb.onclick = ()=> checkTableAnswer(answerY); }
+    const gp = document.getElementById("graphPanel"); if (gp) gp.style.display = "block";
     drawAlgebraGraph(a,b);
     return;
   }
   if (type === "graph") {
-    document.getElementById("graphPanel").style.display = "block";
+    const gp = document.getElementById("graphPanel"); if (gp) gp.style.display = "block";
     drawAlgebraGraph(a,b);
     const gm = document.getElementById("graphMode").value || "ab";
     if (gm === "ab") {
-      document.getElementById("slopeLabel").style.display = "inline";
-      document.getElementById("interceptLabel").style.display = "inline";
-      document.getElementById("graphCheckBtn").style.display = "inline";
+      const sl = document.getElementById("slopeLabel"); if (sl) sl.style.display = "inline";
+      const il = document.getElementById("interceptLabel"); if (il) il.style.display = "inline";
+      const gcb = document.getElementById("graphCheckBtn"); if (gcb) gcb.style.display = "inline";
     } else {
-      document.getElementById("equationInput").style.display = "inline";
-      document.getElementById("graphCheckBtn").style.display = "inline";
+      const eq = document.getElementById("equationInput"); if (eq) eq.style.display = "inline";
+      const gcb = document.getElementById("graphCheckBtn"); if (gcb) gcb.style.display = "inline";
     }
     return;
   }
   if (type === "y") {
-    document.getElementById("question").textContent = `一次関数のとき、x = ${x} の y の値は？`;
-    document.getElementById("answerInput").style.display = "inline"; document.getElementById("checkBtn").style.display = "inline";
-    document.getElementById("graphPanel").style.display = "block"; drawAlgebraGraph(a,b);
+    const qEl = document.getElementById("question"); if (qEl) qEl.textContent = `一次関数のとき、x = ${x} の y の値は？`;
+    const ai = document.getElementById("answerInput"); if (ai) ai.style.display = "inline"; const cb = document.getElementById("checkBtn"); if (cb) cb.style.display = "inline";
+    const gp = document.getElementById("graphPanel"); if (gp) gp.style.display = "block"; drawAlgebraGraph(a,b);
     return;
   }
   if (type === "a") {
-    document.getElementById("question").textContent = `x = ${x} のとき、y = ${y} となる一次関数の傾き a はいくらですか？`;
-    document.getElementById("answerInput").style.display = "inline"; document.getElementById("checkBtn").style.display = "inline";
-    document.getElementById("graphPanel").style.display = "block"; drawAlgebraGraph(a,b);
+    const qEl = document.getElementById("question"); if (qEl) qEl.textContent = `x = ${x} のとき、y = ${y} となる一次関数の傾き a はいくらですか？`;
+    const ai = document.getElementById("answerInput"); if (ai) ai.style.display = "inline"; const cb = document.getElementById("checkBtn"); if (cb) cb.style.display = "inline";
+    const gp = document.getElementById("graphPanel"); if (gp) gp.style.display = "block"; drawAlgebraGraph(a,b);
     return;
   }
   if (type === "b") {
-    document.getElementById("question").textContent = `x = ${x} のとき、y = ${y} となる一次関数の切片 b はいくらですか？`;
-    document.getElementById("answerInput").style.display = "inline"; document.getElementById("checkBtn").style.display = "inline";
-    document.getElementById("graphPanel").style.display = "block"; drawAlgebraGraph(a,b);
+    const qEl = document.getElementById("question"); if (qEl) qEl.textContent = `x = ${x} のとき、y = ${y} となる一次関数の切片 b はいくらですか？`;
+    const ai = document.getElementById("answerInput"); if (ai) ai.style.display = "inline"; const cb = document.getElementById("checkBtn"); if (cb) cb.style.display = "inline";
+    const gp = document.getElementById("graphPanel"); if (gp) gp.style.display = "block"; drawAlgebraGraph(a,b);
     return;
   }
   if (type === "ab") {
-    document.getElementById("question").textContent = `一次関数の a と b を答えてください。`;
-    document.getElementById("answerInputA").style.display = "inline"; document.getElementById("answerInputB").style.display = "inline";
-    document.getElementById("checkBtn").style.display = "inline";
-    document.getElementById("graphPanel").style.display = "block"; drawAlgebraGraph(a,b);
+    const qEl = document.getElementById("question"); if (qEl) qEl.textContent = `一次関数の a と b を答えてください。`;
+    const aEl = document.getElementById("answerInputA"); if (aEl) aEl.style.display = "inline"; const bEl = document.getElementById("answerInputB"); if (bEl) bEl.style.display = "inline";
+    const cb = document.getElementById("checkBtn"); if (cb) cb.style.display = "inline";
+    const gp = document.getElementById("graphPanel"); if (gp) gp.style.display = "block"; drawAlgebraGraph(a,b);
     return;
   }
   if (type === "rate") {
-    // show rate problem as similar
     let x1 = randInt(getRanges().xMin, getRanges().xMax);
     let x2 = randInt(getRanges().xMin, getRanges().xMax);
     while (x2 === x1) x2 = randInt(getRanges().xMin, getRanges().xMax);
-    const y1 = a * x1 + b;
-    const y2 = a * x2 + b;
+    const y1 = a * x1 + b; const y2 = a * x2 + b;
     currentA = (y2 - y1) / (x2 - x1);
-    document.getElementById("question").textContent = `点 (${x1}, ${y1}) と (${x2}, ${y2}) の変化の割合（Δy/Δx）を求めなさい。`;
-    document.getElementById("answerInput").style.display = "inline"; document.getElementById("checkBtn").style.display = "inline";
-    document.getElementById("graphPanel").style.display = "block"; drawAlgebraGraph(a,b);
+    const qEl = document.getElementById("question"); if (qEl) qEl.textContent = `点 (${x1}, ${y1}) と (${x2}, ${y2}) の変化の割合（Δy/Δx）を求めなさい。`;
+    const ai = document.getElementById("answerInput"); if (ai) ai.style.display = "inline"; const cb = document.getElementById("checkBtn"); if (cb) cb.style.display = "inline";
+    const gp = document.getElementById("graphPanel"); if (gp) gp.style.display = "block"; drawAlgebraGraph(a,b);
     return;
   }
 }
 
-// 類似パネル更新
+// ----- 類似パネル更新 -----
 function updateWrongProblemsPanel() {
   const panel = document.getElementById("similarProblemsPanel");
   const list = document.getElementById("similarProblemsList");
-  if (wrongProblems.length === 0) { panel.style.display = "none"; list.innerHTML = ""; return; }
-  panel.style.display = "block";
+  if (wrongProblems.length === 0) { if (panel) panel.style.display = "none"; if (list) list.innerHTML = ""; return; }
+  if (panel) panel.style.display = "block";
   let html = "";
   wrongProblems.forEach(p=>{
     if (p.type === "graph") html += `<li>グラフ: a=${p.a}, b=${p.b}</li>`;
@@ -601,5 +605,50 @@ function updateWrongProblemsPanel() {
     else if (p.type === "rate") html += `<li>変化の割合: a=${p.a}, b=${p.b}</li>`;
     else html += `<li>その他: a=${p.a}, b=${p.b}</li>`;
   });
-  list.innerHTML = html;
+  if (list) list.innerHTML = html;
 }
+
+// ----- イベントリスナを確実に接続する（DOMContentLoaded） -----
+function attachListeners() {
+  try {
+    const startBtn = document.getElementById('startBtn');
+    if (startBtn) {
+      startBtn.removeAttribute('onclick');
+      startBtn.addEventListener('click', () => { if (typeof startGame === 'function') startGame(); else console.error('startGame is not defined'); });
+    }
+
+    const retryBtn = document.getElementById('retryBtn');
+    if (retryBtn) {
+      retryBtn.removeAttribute('onclick');
+      retryBtn.addEventListener('click', () => { if (typeof retryGame === 'function') retryGame(); });
+    }
+
+    const checkBtn = document.getElementById('checkBtn');
+    if (checkBtn) {
+      checkBtn.removeAttribute('onclick');
+      checkBtn.addEventListener('click', () => { if (typeof checkAnswer === 'function') checkAnswer(); });
+    }
+
+    const graphCheckBtn = document.getElementById('graphCheckBtn');
+    if (graphCheckBtn) {
+      graphCheckBtn.removeAttribute('onclick');
+      graphCheckBtn.addEventListener('click', () => { if (typeof checkGraphAnswer === 'function') checkGraphAnswer(); });
+    }
+
+    const tableCheckBtn = document.getElementById('tableCheckBtn');
+    if (tableCheckBtn) {
+      tableCheckBtn.removeAttribute('onclick');
+      tableCheckBtn.addEventListener('click', () => { if (typeof checkTableAnswer === 'function') checkTableAnswer(); });
+    }
+
+    // 保険: グラフ形式や問題タイプの select の change イベント
+    const problemType = document.getElementById('problemType');
+    if (problemType) problemType.addEventListener('change', () => { onProblemTypeChange(); });
+
+    console.log('Event listeners attached.');
+  } catch (err) {
+    console.error('attachListeners error:', err);
+  }
+}
+
+window.addEventListener('DOMContentLoaded', attachListeners);
