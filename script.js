@@ -11,6 +11,37 @@ let gameActive = false;
 let totalQuestions = 10, currentQuestion = 0, correctCount = 0;
 let wrongProblems = [];
 
+// --- wrongProblems 表示更新（未定義によるクラッシュ回避のため追加） ---
+function updateWrongProblemsPanel() {
+  try {
+    const panel = document.getElementById('similarProblemsPanel');
+    const list = document.getElementById('similarProblemsList');
+    if (!panel || !list) return;
+    if (!Array.isArray(wrongProblems) || wrongProblems.length === 0) {
+      panel.style.display = 'none';
+      list.innerHTML = '';
+      return;
+    }
+    panel.style.display = 'block';
+    list.innerHTML = '';
+    wrongProblems.forEach((p, idx) => {
+      const li = document.createElement('li');
+      // wrongProblems の中身がオブジェクトなら読みやすく整形
+      if (typeof p === 'string') li.textContent = p;
+      else if (p && typeof p === 'object') {
+        // 例: {question: "...", a:..., b:...}
+        if (p.question) li.textContent = p.question;
+        else li.textContent = JSON.stringify(p);
+      } else {
+        li.textContent = String(p);
+      }
+      list.appendChild(li);
+    });
+  } catch (err) {
+    console.error('updateWrongProblemsPanel error:', err);
+  }
+}
+
 // --- モバイル対応：input自動フォーカス ---
 function focusAnswerInput() {
   setTimeout(() => {
@@ -24,8 +55,8 @@ function focusAnswerInput() {
 
 // --- モバイル対応：inputでエンター即判定 ---
 function attachInputKeyEvents() {
-  const check = () => { if(document.getElementById("checkBtn").style.display !== "none") checkAnswer(); };
-  const graphCheck = () => { if(document.getElementById("graphCheckBtn").style.display !== "none") checkGraphAnswer(); };
+  const check = () => { const cb = document.getElementById("checkBtn"); if(cb && cb.style.display !== "none") checkAnswer(); };
+  const graphCheck = () => { const gcb = document.getElementById("graphCheckBtn"); if(gcb && gcb.style.display !== "none") checkGraphAnswer(); };
   ["answerInput","answerInputA","answerInputB","equationInput","slopeInput","interceptInput","tableAnswerInput"].forEach(id=>{
     const el = document.getElementById(id);
     if (el) {
@@ -87,7 +118,8 @@ function startGame() {
   const startBtn = document.getElementById("startBtn"); if (startBtn) startBtn.style.display = "none";
   const retryBtn = document.getElementById("retryBtn"); if (retryBtn) retryBtn.style.display = "none";
   const similarBtn = document.getElementById("similarBtn"); if (similarBtn) similarBtn.style.display = wrongProblems.length > 0 ? "inline-block" : "none";
-  updateWrongProblemsPanel();
+  // 定義漏れで例外にならないようガードして呼ぶ
+  if (typeof updateWrongProblemsPanel === 'function') updateWrongProblemsPanel();
   applyCustomRange();
   generateGameQuestion();
   startTimer();
@@ -160,8 +192,8 @@ function generateGameQuestion() {
   }
 
   if (type === "algebra") generateAlgebraQuestionImproved();
-  else if (type === "graph") { document.getElementById("graphPanel").style.display = "block"; generateGraphQuestion(true); }
-  else if (type === "table") generateTableQuestion();
+  else if (type === "graph") { const gp = document.getElementById("graphPanel"); if (gp) gp.style.display = "block"; if (typeof generateGraphQuestion === 'function') generateGraphQuestion(true); }
+  else if (type === "table") if (typeof generateTableQuestion === 'function') generateTableQuestion();
   else if (type === "rate") generateRateQuestion();
 
   focusAnswerInput();
@@ -230,7 +262,7 @@ function generateAlgebraQuestionImproved() {
     const cb = document.getElementById("checkBtn"); if (cb) cb.style.display = "inline";
     const hb = document.getElementById("hintBtn"); if (hb) hb.style.display = "inline";
     const gp = document.getElementById("graphPanel"); if (gp) gp.style.display = "block";
-    drawAlgebraGraph(currentA, currentB);
+    if (typeof drawAlgebraGraph === 'function') try { drawAlgebraGraph(currentA, currentB); } catch(e){ console.error(e); }
     focusAnswerInput();
     return;
   } else if (questionType === "2pt") {
@@ -253,13 +285,13 @@ function generateAlgebraQuestionImproved() {
     const cb = document.getElementById("checkBtn"); if (cb) cb.style.display = "inline";
     const hb = document.getElementById("hintBtn"); if (hb) hb.style.display = "inline";
     const gp = document.getElementById("graphPanel"); if (gp) gp.style.display = "block";
-    drawAlgebraGraph(currentA, currentB);
+    if (typeof drawAlgebraGraph === 'function') try { drawAlgebraGraph(currentA, currentB); } catch(e){ console.error(e); }
     focusAnswerInput();
     return;
   }
 
   const gp = document.getElementById("graphPanel"); if (gp) gp.style.display = "block";
-  drawAlgebraGraph(currentA, currentB);
+  if (typeof drawAlgebraGraph === 'function') try { drawAlgebraGraph(currentA, currentB); } catch(e){ console.error(e); }
   focusAnswerInput();
 }
 
@@ -284,7 +316,7 @@ function generateRateQuestion() {
   const hb = document.getElementById("hintBtn"); if (hb) hb.style.display = "inline";
 
   const gp = document.getElementById("graphPanel"); if (gp) gp.style.display = "block";
-  drawAlgebraGraph(a, b);
+  if (typeof drawAlgebraGraph === 'function') try { drawAlgebraGraph(a, b); } catch(e){ console.error(e); }
 
   focusAnswerInput();
 }
