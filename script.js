@@ -6,7 +6,9 @@ let questionType = "y"; // y, a, b, ab, 2pt, eq, rate
 let graphA = 1, graphB = 0, graphChart = null;
 let currentGameQuestionType = "algebra";
 
-let score = 0, life = 3, level = 1, timer = 30, timerInterval = null;
+let score = 0, life = 3, level = 1;
+// timer 関連は残すがタイム制限は無効化（startTimer を空にする）
+let timer = 30, timerInterval = null;
 let gameActive = false;
 let totalQuestions = 10, currentQuestion = 0, correctCount = 0;
 let wrongProblems = [];
@@ -114,7 +116,7 @@ function drawAlgebraGraph(a, b) {
       if (graphChart) { try { graphChart.destroy(); } catch{} graphChart = null; }
       const labels = [];
       const data = [];
-      // x軸範囲を -5〜5 に変更
+      // x軸範囲を -5〜5 に設定（以前の変更が入っている前提）
       const minX = -5, maxX = 5;
       for (let x = minX; x <= maxX; x++) { labels.push(x); data.push(a * x + b); }
       const ctx = canvas.getContext('2d');
@@ -127,10 +129,10 @@ function drawAlgebraGraph(a, b) {
           scales: { x: { display: true }, y: { display: true } },
           plugins: {
             legend: { display: false },
-            tooltip: { enabled: false } // ツールチップを無効化（これでクリックやホバーで式が出なくなります）
+            tooltip: { enabled: false } // ツールチップ無効（クリック／ホバーで表示されない）
           },
           elements: {
-            point: { radius: 0, hoverRadius: 0 } // ポイント自体の反応を無くす
+            point: { radius: 0, hoverRadius: 0 }
           }
         }
       });
@@ -147,7 +149,6 @@ function drawAlgebraGraph(a, b) {
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = '#f9f9f9';
     ctx.fillRect(0, 0, w, h);
-    // x軸範囲を -5〜5 に変更
     const minX = -5, maxX = 5;
     const yVals = []; for (let x = minX; x <= maxX; x++) yVals.push(a * x + b);
     const minY = Math.min(...yVals), maxY = Math.max(...yVals);
@@ -186,38 +187,41 @@ function showHint() {
 function startGame() {
   score = 0; level = 1; currentQuestion = 0; correctCount = 0; gameActive = true;
   setDifficultyRange(document.getElementById("difficulty").value);
-  life = window.lifeLimit; timer = window.timeLimit;
+  life = window.lifeLimit;
   document.getElementById("score").textContent = score;
   document.getElementById("life").textContent = life;
   document.getElementById("level").textContent = level;
-  document.getElementById("timer").textContent = timer;
+  // タイム制限を廃止：タイマー表示は "無制限" にして開始しない
+  const timerEl = document.getElementById("timer");
+  if (timerEl) timerEl.textContent = '無制限';
+
   const startBtn = document.getElementById("startBtn"); if (startBtn) startBtn.style.display = "none";
   const retryBtn = document.getElementById("retryBtn"); if (retryBtn) retryBtn.style.display = "none";
   const similarBtn = document.getElementById("similarBtn"); if (similarBtn) similarBtn.style.display = wrongProblems.length > 0 ? "inline-block" : "none";
   if (typeof updateWrongProblemsPanel === 'function') updateWrongProblemsPanel();
   applyCustomRange();
   generateGameQuestion();
+  // タイマーは開始しない（startTimer は無効）
   startTimer();
 }
 function retryGame() { startGame(); }
 
+// startTimer を空関数化して時間経過でライフが減らないようにする
 function startTimer() {
-  if (timerInterval) clearInterval(timerInterval);
-  timerInterval = setInterval(() => {
-    if (!gameActive) { clearInterval(timerInterval); return; }
-    timer--; const tEl = document.getElementById("timer"); if (tEl) tEl.textContent = timer;
-    if (timer <= 0) loseLife();
-  }, 1000);
+  // タイム制限は無効化されています（何もしない）
+  // 以前は interval をセットして timer-- を行っていましたが、現在は無効です。
 }
+
 function loseLife() {
   life--; const lifeEl = document.getElementById("life"); if (lifeEl) lifeEl.textContent = life;
-  timer = window.timeLimit; const tEl = document.getElementById("timer"); if (tEl) tEl.textContent = timer;
+  // タイマーリセット処理は不要だが既存コードと互換性を保つため残す（timer は使われない）
+  timer = window.timeLimit; const tEl = document.getElementById("timer"); if (tEl) tEl.textContent = '無制限';
   if (life <= 0) endGame();
   else setTimeout(() => { generateGameQuestion(); focusAnswerInput(); }, 800);
 }
 function endGame() {
   gameActive = false;
-  clearInterval(timerInterval);
+  try { if (timerInterval) clearInterval(timerInterval); } catch {}
   const goPanel = document.getElementById("gameOverPanel"); if (goPanel) goPanel.style.display = "block";
   const retryBtn = document.getElementById("retryBtn"); if (retryBtn) retryBtn.style.display = "inline-block";
   const checkBtn = document.getElementById("checkBtn"); if (checkBtn) checkBtn.style.display = "none";
