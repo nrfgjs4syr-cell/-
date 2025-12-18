@@ -245,22 +245,56 @@ function showHint() {
 
 // --- ゲーム制御 ---
 function startGame() {
-  score = 0; level = 1; currentQuestion = 0; correctCount = 0; gameActive = true;
+  // reset core game state
+  score = 0;
+  level = 1;
+  currentQuestion = 0;
+  correctCount = 0;
+  gameActive = true;
+
+  // clear history and UI results so "再挑戦" で前回の正解率が残らないようにする
+  wrongProblems = [];
+  try { updateWrongProblemsPanel(); } catch (e) { /* ignore */ }
+
+  const resultSummary = document.getElementById("resultSummary");
+  if (resultSummary) resultSummary.textContent = "";
+
+  // Clear various result displays if present
+  const answerResult = document.getElementById("answerResult");
+  if (answerResult) answerResult.textContent = "";
+  const graphAnswerResult = document.getElementById("graphAnswerResult");
+  if (graphAnswerResult) graphAnswerResult.textContent = "";
+  const tableAnswerResult = document.getElementById("tableAnswerResult");
+  if (tableAnswerResult) tableAnswerResult.textContent = "";
+  const hintEl = document.getElementById("hintText");
+  if (hintEl) { hintEl.style.display = "none"; hintEl.textContent = ""; }
+
+  // reset displays / stats
   setDifficultyRange(document.getElementById("difficulty").value);
-  life = window.lifeLimit; timer = window.timeLimit;
-  document.getElementById("score").textContent = score;
-  document.getElementById("life").textContent = life;
-  document.getElementById("level").textContent = level;
-  document.getElementById("timer").textContent = timer;
+  life = window.lifeLimit;
+  timer = window.timeLimit;
+  const scoreEl = document.getElementById("score"); if (scoreEl) scoreEl.textContent = score;
+  const lifeEl = document.getElementById("life"); if (lifeEl) lifeEl.textContent = life;
+  const levelEl = document.getElementById("level"); if (levelEl) levelEl.textContent = level;
+  const timerEl = document.getElementById("timer"); if (timerEl) timerEl.textContent = (typeof timer !== 'undefined' ? timer : '');
+
+  // hide / show appropriate buttons
   const startBtn = document.getElementById("startBtn"); if (startBtn) startBtn.style.display = "none";
   const retryBtn = document.getElementById("retryBtn"); if (retryBtn) retryBtn.style.display = "none";
   const similarBtn = document.getElementById("similarBtn"); if (similarBtn) similarBtn.style.display = wrongProblems.length > 0 ? "inline-block" : "none";
-  if (typeof updateWrongProblemsPanel === 'function') updateWrongProblemsPanel();
+
+  // apply settings and begin
   applyCustomRange();
   generateGameQuestion();
-  startTimer();
+
+  // startTimer might be a no-op if you previously disabled timer; call it for compatibility
+  try { startTimer(); } catch (e) { /* ignore */ }
 }
-function retryGame() { startGame(); }
+
+function retryGame() {
+  // wrapper for clarity — retry simply restarts the game and clears prior results
+  startGame();
+} retryGame() { startGame(); }
 
 function startTimer() {
   if (timerInterval) clearInterval(timerInterval);
