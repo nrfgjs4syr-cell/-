@@ -1,4 +1,5 @@
 // 一次関数ゲーム - 完全版スクリプト（グラフ描画・判定・ヒント・フォールバック含む）
+// ※ y軸の目盛りを細かく表示するように drawAlgebraGraph を調整しました。
 
 // --- 状態変数 ---
 let currentA = 1, currentB = 0, currentX = 0, currentY = 0;
@@ -6,9 +7,7 @@ let questionType = "y"; // y, a, b, ab, 2pt, eq, rate
 let graphA = 1, graphB = 0, graphChart = null;
 let currentGameQuestionType = "algebra";
 
-let score = 0, life = 3, level = 1;
-// timer 関連は残すがタイム制限は無効化（startTimer を空にする）
-let timer = 30, timerInterval = null;
+let score = 0, life = 3, level = 1, timer = 30, timerInterval = null;
 let gameActive = false;
 let totalQuestions = 10, currentQuestion = 0, correctCount = 0;
 let wrongProblems = [];
@@ -116,9 +115,19 @@ function drawAlgebraGraph(a, b) {
       if (graphChart) { try { graphChart.destroy(); } catch{} graphChart = null; }
       const labels = [];
       const data = [];
-      // x軸範囲を -5〜5 に設定（以前の変更が入っている前提）
+      // x軸範囲を -5〜5 に設定
       const minX = -5, maxX = 5;
       for (let x = minX; x <= maxX; x++) { labels.push(x); data.push(a * x + b); }
+
+      // y の範囲と step を決定（細かめに）
+      const yVals = data.slice();
+      const minY = Math.min(...yVals), maxY = Math.max(...yVals);
+      const rangeY = Math.max(1e-6, maxY - minY);
+      // step を自動で細かめに設定（レンジに応じて 0.5〜 のかなり細かい目盛）
+      let yStep = Math.max(0.5, rangeY / 20);
+      // もし yStep が整数になった方が見やすければ丸める（小さなレンジなら 0.5 のまま）
+      if (rangeY > 20) yStep = Math.ceil(yStep);
+
       const ctx = canvas.getContext('2d');
       graphChart = new Chart(ctx, {
         type: 'line',
@@ -126,10 +135,31 @@ function drawAlgebraGraph(a, b) {
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: { x: { display: true }, y: { display: true } },
+          scales: {
+            x: {
+              display: true,
+              min: minX,
+              max: maxX,
+              ticks: { stepSize: 1 }
+            },
+            y: {
+              display: true,
+              // suggestedMin / suggestedMax をステップに合わせて調整
+              suggestedMin: Math.floor((minY - yStep) / yStep) * yStep,
+              suggestedMax: Math.ceil((maxY + yStep) / yStep) * yStep,
+              ticks: {
+                stepSize: yStep,
+                // 小数の表示を整理
+                callback: function(value) {
+                  // 表示が整数なら整数表示、そうでなければ小数1桁で表示
+                  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+                }
+              }
+            }
+          },
           plugins: {
             legend: { display: false },
-            tooltip: { enabled: false } // ツールチップ無効（クリック／ホバーで表示されない）
+            tooltip: { enabled: false } // ツールチップを無効化
           },
           elements: {
             point: { radius: 0, hoverRadius: 0 }
@@ -139,7 +169,7 @@ function drawAlgebraGraph(a, b) {
       return;
     }
 
-    // フォールバック（canvas）
+    // フォールバック（canvas） — 同じく x=-5..5、y の目盛を細かく描画
     const ctx = canvas.getContext('2d');
     const ratio = window.devicePixelRatio || 1;
     const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -149,18 +179,48 @@ function drawAlgebraGraph(a, b) {
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = '#f9f9f9';
     ctx.fillRect(0, 0, w, h);
+
     const minX = -5, maxX = 5;
     const yVals = []; for (let x = minX; x <= maxX; x++) yVals.push(a * x + b);
     const minY = Math.min(...yVals), maxY = Math.max(...yVals);
-    const ys = (maxY - minY) || 1;
-    const y0 = h - ((0 - minY) / ys) * h;
-    ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, y0); ctx.lineTo(w, y0); ctx.stroke();
+    const rangeY = Math.max(1e-6, maxY - minY);
+    let yStep = Math.max(0.5, rangeY / 20);
+    if (rangeY > 20) yStep = Math.ceil(yStep);
+
+    // 軸原点のピクセル
+    const ys = rangeY || 1;
+    const yToPx = (yVal) => h - ((yVal - minY) / ys) * h;
+    // 横グリッド（y目盛り）を描画
+    ctx.strokeStyle = '#eee';
+    ctx.lineWidth = 1;
+    ctx.fillStyle = '#666';
+    ctx.font = '12px sans-serif';
+    // 始点を yStep の倍数に揃える
+    const startY = Math.floor(minY / yStep) * yStep;
+    for (let yLine = startY; yLine <= maxY + 1e-9; yLine = Math.round((yLine + yStep) * 1000000) / 1000000) {
+      const py = yToPx(yLine);
+      // グリッド
+      ctx.beginPath();
+      ctx.moveTo(0, py);
+      ctx.lineTo(w, py);
+      ctx.stroke();
+      // ラベル（左端）
+      const label = Number.isInteger(yLine) ? String(yLine) : yLine.toFixed(1);
+      ctx.fillText(label, 6, py - 4);
+    }
+
+    // x 軸（y=0）を描画（目立たせる）
+    const y0px = yToPx(0);
+    ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0, y0px); ctx.lineTo(w, y0px); ctx.stroke();
+
+    // 関数グラフを描画
     ctx.strokeStyle = '#3578e5'; ctx.lineWidth = 2; ctx.beginPath();
     for (let i = 0; i <= (maxX - minX); i++) {
       const xVal = minX + i;
       const yVal = a * xVal + b;
       const px = (i / (maxX - minX)) * w;
-      const py = h - ((yVal - minY) / ys) * h;
+      const py = yToPx(yVal);
       if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
     }
     ctx.stroke();
@@ -187,41 +247,38 @@ function showHint() {
 function startGame() {
   score = 0; level = 1; currentQuestion = 0; correctCount = 0; gameActive = true;
   setDifficultyRange(document.getElementById("difficulty").value);
-  life = window.lifeLimit;
+  life = window.lifeLimit; timer = window.timeLimit;
   document.getElementById("score").textContent = score;
   document.getElementById("life").textContent = life;
   document.getElementById("level").textContent = level;
-  // タイム制限を廃止：タイマー表示は "無制限" にして開始しない
-  const timerEl = document.getElementById("timer");
-  if (timerEl) timerEl.textContent = '無制限';
-
+  document.getElementById("timer").textContent = timer;
   const startBtn = document.getElementById("startBtn"); if (startBtn) startBtn.style.display = "none";
   const retryBtn = document.getElementById("retryBtn"); if (retryBtn) retryBtn.style.display = "none";
   const similarBtn = document.getElementById("similarBtn"); if (similarBtn) similarBtn.style.display = wrongProblems.length > 0 ? "inline-block" : "none";
   if (typeof updateWrongProblemsPanel === 'function') updateWrongProblemsPanel();
   applyCustomRange();
   generateGameQuestion();
-  // タイマーは開始しない（startTimer は無効）
   startTimer();
 }
 function retryGame() { startGame(); }
 
-// startTimer を空関数化して時間経過でライフが減らないようにする
 function startTimer() {
-  // タイム制限は無効化されています（何もしない）
-  // 以前は interval をセットして timer-- を行っていましたが、現在は無効です。
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    if (!gameActive) { clearInterval(timerInterval); return; }
+    timer--; const tEl = document.getElementById("timer"); if (tEl) tEl.textContent = timer;
+    if (timer <= 0) loseLife();
+  }, 1000);
 }
-
 function loseLife() {
   life--; const lifeEl = document.getElementById("life"); if (lifeEl) lifeEl.textContent = life;
-  // タイマーリセット処理は不要だが既存コードと互換性を保つため残す（timer は使われない）
-  timer = window.timeLimit; const tEl = document.getElementById("timer"); if (tEl) tEl.textContent = '無制限';
+  timer = window.timeLimit; const tEl = document.getElementById("timer"); if (tEl) tEl.textContent = timer;
   if (life <= 0) endGame();
   else setTimeout(() => { generateGameQuestion(); focusAnswerInput(); }, 800);
 }
 function endGame() {
   gameActive = false;
-  try { if (timerInterval) clearInterval(timerInterval); } catch {}
+  clearInterval(timerInterval);
   const goPanel = document.getElementById("gameOverPanel"); if (goPanel) goPanel.style.display = "block";
   const retryBtn = document.getElementById("retryBtn"); if (retryBtn) retryBtn.style.display = "inline-block";
   const checkBtn = document.getElementById("checkBtn"); if (checkBtn) checkBtn.style.display = "none";
