@@ -114,7 +114,8 @@ function drawAlgebraGraph(a, b) {
       if (graphChart) { try { graphChart.destroy(); } catch{} graphChart = null; }
       const labels = [];
       const data = [];
-      const minX = -10, maxX = 10;
+      // x軸範囲を -5〜5 に変更
+      const minX = -5, maxX = 5;
       for (let x = minX; x <= maxX; x++) { labels.push(x); data.push(a * x + b); }
       const ctx = canvas.getContext('2d');
       graphChart = new Chart(ctx, {
@@ -146,7 +147,8 @@ function drawAlgebraGraph(a, b) {
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = '#f9f9f9';
     ctx.fillRect(0, 0, w, h);
-    const minX = -10, maxX = 10;
+    // x軸範囲を -5〜5 に変更
+    const minX = -5, maxX = 5;
     const yVals = []; for (let x = minX; x <= maxX; x++) yVals.push(a * x + b);
     const minY = Math.min(...yVals), maxY = Math.max(...yVals);
     const ys = (maxY - minY) || 1;
