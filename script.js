@@ -119,8 +119,19 @@ function drawAlgebraGraph(a, b) {
       const ctx = canvas.getContext('2d');
       graphChart = new Chart(ctx, {
         type: 'line',
-        data: { labels, datasets: [{ label: `y = ${a}x + ${b}`, data, borderColor: '#3578e5', backgroundColor: 'rgba(53,120,229,0.08)', fill: false, pointRadius: 2, tension: 0 }] },
-        options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: true }, y: { display: true } }, plugins: { legend: { display: false } } }
+        data: { labels, datasets: [{ label: `y = ${a}x + ${b}`, data, borderColor: '#3578e5', backgroundColor: 'rgba(53,120,229,0.08)', fill: false, pointRadius: 0, pointHoverRadius: 0, tension: 0 }] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: { x: { display: true }, y: { display: true } },
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false } // ツールチップを無効化（これでクリックやホバーで式が出なくなります）
+          },
+          elements: {
+            point: { radius: 0, hoverRadius: 0 } // ポイント自体の反応を無くす
+          }
+        }
       });
       return;
     }
@@ -401,8 +412,8 @@ function generateGraphQuestion(withPanel) {
     drawAlgebraGraph(a, b);
     // 表示設定: グラフ形式に応じた入力
     const mode = document.getElementById('graphMode')?.value || 'ab';
-    if (mode === 'ab') { document.getElementById('slopeLabel').style.display = 'inline'; document.getElementById('interceptLabel').style.display = 'inline'; document.getElementById('graphCheckBtn').style.display = 'inline'; }
-    else { document.getElementById('equationInput').style.display = 'inline'; document.getElementById('graphCheckBtn').style.display = 'inline'; }
+    if (mode === 'ab') { document.getElementById('slopeLabel').style.display = 'inline'; document.getElementById('interceptLabel').style.display = 'inline'; document.getElementById('graphCheckBtn').style.display = 'inline'; document.getElementById('equationInput').style.display = 'none'; }
+    else { document.getElementById('equationInput').style.display = 'inline'; document.getElementById('graphCheckBtn').style.display = 'inline'; document.getElementById('slopeLabel').style.display = 'none'; document.getElementById('interceptLabel').style.display = 'none'; }
     questionType = 'eq';
     const qEl = document.getElementById("graphProblem"); if (qEl) qEl.textContent = 'グラフを見て a,b を答えてください。';
     focusAnswerInput();
