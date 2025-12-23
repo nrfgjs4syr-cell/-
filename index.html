@@ -127,14 +127,15 @@
 
   <!-- 回答エリア（表示は JS で切替） -->
   <div style="text-align:center; margin-bottom:10px;">
-    <input id="answerInput" type="number" placeholder="答えを入力" style="display:none;">
-    <input id="answerInputA" type="number" placeholder="a（傾き）" style="display:none;">
-    <input id="answerInputB" type="number" placeholder="b（切片）" style="display:none;">
-    <input id="equationInput" type="text" placeholder="y = ax + b の形で入力" style="display:none; width:40%; padding:6px; border-radius:6px;">
+    <!-- デフォルトで表示するよう display:none を削除 -->
+    <input id="answerInput" type="number" placeholder="答えを入力">
+    <input id="answerInputA" type="number" placeholder="a（傾き）">
+    <input id="answerInputB" type="number" placeholder="b（切片）">
+    <input id="equationInput" type="text" placeholder="y = ax + b の形で入力" style="width:40%; padding:6px; border-radius:6px;">
     <div style="margin-top:8px;">
-      <button id="checkBtn" class="big-button" onclick="checkAnswer()" style="display:none;">判定する</button>
-      <button id="graphCheckBtn" class="big-button" onclick="checkGraphAnswer()" style="display:none;">判定する</button>
-      <button id="hintBtn" class="big-button" onclick="showHint()" style="display:none; background:#ffb74d; color:#3a2300;">ヒント</button>
+      <button id="checkBtn" class="big-button" onclick="checkAnswer()">判定する</button>
+      <button id="graphCheckBtn" class="big-button" onclick="checkGraphAnswer()">判定する</button>
+      <button id="hintBtn" class="big-button" onclick="showHint()" style="background:#ffb74d; color:#3a2300;">ヒント</button>
     </div>
   </div>
 
@@ -149,7 +150,7 @@
     <div id="tableArea"></div>
     <div style="text-align:center; margin-top:8px;">
       <input id="tableAnswerInput" type="number" placeholder="yの値">
-      <button id="tableCheckBtn" class="big-button" onclick="checkTableAnswer()" style="display:none;">判定する</button>
+      <button id="tableCheckBtn" class="big-button" onclick="checkTableAnswer()">判定する</button>
       <div id="tableAnswerResult"></div>
     </div>
   </div>
@@ -161,8 +162,8 @@
     <div id="graphProblem" style="text-align:center; margin-bottom:10px;"></div>
     <div class="graph-container"><canvas id="graphCanvas"></canvas></div>
     <div style="text-align:center; margin-top:10px;">
-      <label id="slopeLabel" style="display:none;">傾き (a) <input id="slopeInput" type="number" placeholder="傾き"></label>
-      <label id="interceptLabel" style="display:none; margin-left:10px;">切片 (b) <input id="interceptInput" type="number" placeholder="切片"></label>
+      <label id="slopeLabel" style="margin-right:8px; display:inline-block;">傾き (a) <input id="slopeInput" type="number" placeholder="傾き"></label>
+      <label id="interceptLabel" style="display:inline-block;">切片 (b) <input id="interceptInput" type="number" placeholder="切片"></label>
     </div>
     <div id="graphAnswerResult" style="text-align:center; margin-top:8px;"></div>
   </div>
