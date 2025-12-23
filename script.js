@@ -1,6 +1,7 @@
-// 一次関数ゲーム - 完全修正版 script.js
-// - 省略箇所を復元し、UI 表示制御を整理、グローバル公開を正しく実施
-// - Chart.js を使ったグラフ描画 + canvas フォールバックあり
+// 一次関数ゲーム - 完全修正版 script.js (上書き用)
+// - 省略箇所を復元し、UI 表示制御を整理、必要な関数を全て定義してグローバル公開しています。
+// - index.html の inline handlers (onclick/onchange) と整合するよう window にエクスポート済み。
+// - Chart.js を使った描画 + canvas フォールバックあり。
 
 // --- 状態変数 ---
 let currentA = 1, currentB = 0, currentX = 0, currentY = 0;
@@ -20,7 +21,7 @@ function clampDecimal(val) { return Math.round(val * 10) / 10; }
 function approxEqual(a, b, eps = 1e-6) { return Math.abs(a - b) < eps; }
 function parseNumber(v) { const n = Number(v); return Number.isFinite(n) ? n : null; }
 
-// getRanges: 難易度で setDifficultyRange により window.autoRange が設定される想定
+// getRanges: setDifficultyRange が window.autoRange をセットする想定
 function getRanges() {
   return window.autoRange || { aMin: 1, aMax: 3, bMin: -3, bMax: 3, xMin: 0, xMax: 5 };
 }
@@ -33,11 +34,9 @@ function hideAllAnswerUI() {
   ["answerInput","answerInputA","answerInputB","equationInput","slopeInput","interceptInput","tableAnswerInput"].forEach(id => {
     const el = document.getElementById(id); if (el) el.style.display = "none";
   });
-
   ["checkBtn","graphCheckBtn","hintBtn","tableCheckBtn"].forEach(id => {
     const el = document.getElementById(id); if (el) el.style.display = "none";
   });
-
   const gp = document.getElementById("graphPanel"); if (gp) gp.style.display = "none";
   const tp = document.getElementById("tablePanel"); if (tp) tp.style.display = "none";
   const slopeLabel = document.getElementById('slopeLabel'); if (slopeLabel) slopeLabel.style.display = 'none';
@@ -127,7 +126,7 @@ function practiceWrongProblem(idx) {
   focusAnswerInput();
 }
 
-// --- フォーカス / Enter 判定バインド ---
+// --- input focus & Enter 判定バインド ---
 function focusAnswerInput() {
   setTimeout(() => {
     const ids = ["answerInput","answerInputA","answerInputB","equationInput","slopeInput","interceptInput","tableAnswerInput"];
@@ -181,23 +180,21 @@ function applyCustomRange() {
   if (v >= 1) totalQuestions = v;
 }
 
-// --- グラフ描画（Chart.js / フォールバック） ---
+// --- draw algebra graph (Chart.js or canvas fallback) ---
 function drawAlgebraGraph(a, b) {
   try {
     const canvas = document.getElementById('graphCanvas');
     if (!canvas) return;
     if (window.Chart) {
       if (graphChart) { try { graphChart.destroy(); } catch {} graphChart = null; }
-      const labels = [];
-      const data = [];
+      const labels = []; const data = [];
       const minX = -5, maxX = 5;
       for (let x = minX; x <= maxX; x++) { labels.push(x); data.push(a * x + b); }
 
       const yVals = data.slice();
       const minY = Math.min(...yVals), maxY = Math.max(...yVals);
       const rangeY = Math.max(1e-6, maxY - minY);
-      let yStep = Math.max(0.5, rangeY / 20);
-      if (rangeY > 20) yStep = Math.ceil(yStep);
+      let yStep = Math.max(0.5, rangeY / 20); if (rangeY > 20) yStep = Math.ceil(yStep);
 
       const ctx = canvas.getContext('2d');
       graphChart = new Chart(ctx, {
@@ -224,10 +221,7 @@ function drawAlgebraGraph(a, b) {
               display: true,
               suggestedMin: Math.floor((minY - yStep) / yStep) * yStep,
               suggestedMax: Math.ceil((maxY + yStep) / yStep) * yStep,
-              ticks: {
-                stepSize: yStep,
-                callback: function(value) { return Number.isInteger(value) ? String(value) : value.toFixed(1); }
-              }
+              ticks: { stepSize: yStep, callback: function(value) { return Number.isInteger(value) ? String(value) : value.toFixed(1); } }
             }
           },
           plugins: { legend: { display: false }, tooltip: { enabled: false } },
@@ -244,8 +238,7 @@ function drawAlgebraGraph(a, b) {
     canvas.width = Math.max(300, Math.floor(w * ratio));
     canvas.height = Math.max(200, Math.floor(h * ratio));
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#f9f9f9'; ctx.fillRect(0, 0, w, h);
+    ctx.clearRect(0, 0, w, h); ctx.fillStyle = '#f9f9f9'; ctx.fillRect(0, 0, w, h);
 
     const minX = -5, maxX = 5;
     const yVals = []; for (let x = minX; x <= maxX; x++) yVals.push(a * x + b);
@@ -281,7 +274,7 @@ function drawAlgebraGraph(a, b) {
   } catch (err) { console.error('drawAlgebraGraph error:', err); }
 }
 
-// --- ヒント表示 ---
+// --- ヒント ---
 function showHint() {
   try {
     const hintEl = document.getElementById('hintText');
@@ -351,7 +344,7 @@ function endGame() {
   if (resultSummary) resultSummary.textContent = `終了！正解数: ${correctCount} / ${totalQuestions}（正答率: ${totalQuestions ? Math.round((correctCount / totalQuestions) * 100) : 0}%）`;
 }
 
-// --- 出題ロジック ----------
+// --- 出題ロジック（既定の各出題関数は上で定義済み） ---
 function generateGameQuestion() {
   if (!gameActive) return;
   if (currentQuestion >= totalQuestions) { endGame(); return; }
@@ -369,15 +362,11 @@ function generateGameQuestion() {
   focusAnswerInput();
 }
 
-// 以下の個別出題・判定関数は上で既に定義済み（generateAlgebraQuestionImproved, generateGraphQuestion, generateTableQuestion, generateRateQuestion,
-// checkAnswer, checkGraphAnswer, checkTableAnswer）
-
 // --- graphMode change handler & initial UI bind ---
 function onGraphModeChange() {
   const pt = document.getElementById("problemType")?.value || currentGameQuestionType;
   if (pt === 'graph') showUIForProblemMode('graph');
 }
-
 function initUIBindings() {
   const p = document.getElementById("problemType")?.value || currentGameQuestionType;
   showUIForProblemMode(p);
@@ -388,7 +377,7 @@ function initUIBindings() {
 if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', initUIBindings);
 else initUIBindings();
 
-// --- グローバル公開（index.html inline handlers 対応） ---
+// --- グローバル公開（index.html の inline handlers 対応） ---
 window.startGame = startGame;
 window.retryGame = retryGame;
 window.showHint = showHint;
