@@ -1,5 +1,5 @@
-// 一次関数ゲーム - 修正版スクリプト
-// （Chart.js を使ったグラフ描画、判定、ヒント、フォールバックを含む）
+// 一次関数ゲーム - 完全版スクリプト（最終修正版）
+// グラフ描画・判定・ヒント・フォールバックを含む
 
 // --- 状態変数 ---
 let currentA = 1, currentB = 0, currentX = 0, currentY = 0;
@@ -32,14 +32,33 @@ function updateWrongProblemsPanel() {
     }
     panel.style.display = 'block';
     list.innerHTML = '';
-    wrongProblems.forEach((p) => {
+    wrongProblems.forEach((p, i) => {
       const li = document.createElement('li');
       if (typeof p === 'string') li.textContent = p;
       else if (p && typeof p === 'object') li.textContent = p.question || JSON.stringify(p);
       else li.textContent = String(p);
+      // 練習ボタン（任意）
+      const btn = document.createElement('button');
+      btn.textContent = '練習';
+      btn.style.marginLeft = '8px';
+      btn.className = 'big-button';
+      btn.onclick = () => { practiceWrongProblem(i); };
+      li.appendChild(btn);
       list.appendChild(li);
     });
   } catch (err) { console.error('updateWrongProblemsPanel error:', err); }
+}
+
+function practiceWrongProblem(index) {
+  const p = wrongProblems[index];
+  if (!p) return;
+  const qText = p.question || String(p);
+  const qEl = document.getElementById('question');
+  if (qEl) qEl.textContent = `類似練習: ${qText}`;
+  hideAllAnswerUI();
+  const ai = document.getElementById('answerInput'); if (ai) ai.style.display = 'inline';
+  const cb = document.getElementById('checkBtn'); if (cb) cb.style.display = 'inline';
+  focusAnswerInput();
 }
 
 // --- モバイル対応：input自動フォーカス ---
@@ -48,7 +67,7 @@ function focusAnswerInput() {
     const ids = ["answerInput", "answerInputA", "answerInputB", "equationInput", "slopeInput", "interceptInput", "tableAnswerInput"];
     for (const id of ids) {
       const el = document.getElementById(id);
-      if (el && el.style.display !== "none") { el.focus(); try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch { } break; }
+      if (el && el.style.display !== "none") { try { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch { } break; }
     }
   }, 300);
 }
@@ -71,7 +90,6 @@ function attachInputKeyEvents() {
     }
   });
 
-  // startBtn に touchend を追加（スマホ対策）
   const startBtn = document.getElementById('startBtn');
   if (startBtn && !startBtn._touchBound) {
     startBtn.addEventListener('touchend', (e) => { e.preventDefault(); startBtn.click(); }, { passive: false });
@@ -96,7 +114,8 @@ function setDifficultyRange(difficulty) {
   window.timeLimit = getTimeLimitByDifficulty(difficulty);
 }
 function applyCustomRange() {
-  const v = Number(document.getElementById("totalQuestionsInput").value);
+  const el = document.getElementById("totalQuestionsInput");
+  const v = el ? Number(el.value) : totalQuestions;
   if (v >= 1) totalQuestions = v;
 }
 function getRanges() { return window.autoRange || { aMin: 1, aMax: 3, bMin: -3, bMax: 3, xMin: 0, xMax: 5 }; }
@@ -110,37 +129,40 @@ function drawAlgebraGraph(a, b) {
   try {
     const canvas = document.getElementById('graphCanvas');
     if (!canvas) return;
-    // Chart.js があれば使用
     if (window.Chart) {
       if (graphChart) { try { graphChart.destroy(); } catch{} graphChart = null; }
       const labels = [];
       const data = [];
-      // x軸範囲を -5〜5 に設定
       const minX = -5, maxX = 5;
       for (let x = minX; x <= maxX; x++) { labels.push(x); data.push(a * x + b); }
 
-      // y の範囲と step を決定（細かめに）
       const yVals = data.slice();
       const minY = Math.min(...yVals), maxY = Math.max(...yVals);
       const rangeY = Math.max(1e-6, maxY - minY);
-      // step を自動で細かめに設定（レンジに応じて 0.5〜）
       let yStep = Math.max(0.5, rangeY / 20);
       if (rangeY > 20) yStep = Math.ceil(yStep);
 
       const ctx = canvas.getContext('2d');
       graphChart = new Chart(ctx, {
         type: 'line',
-        data: { labels, datasets: [{ label: `y = ${a}x + ${b}`, data, borderColor: '#3578e5', backgroundColor: 'rgba(53,120,229,0.08)', fill: false, pointRadius: 0, pointHoverRadius: 0, tension: 0 }] },
+        data: {
+          labels,
+          datasets: [{
+            label: `y = ${a}x + ${b}`,
+            data,
+            borderColor: '#3578e5',
+            backgroundColor: 'rgba(53,120,229,0.08)',
+            fill: false,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            tension: 0
+          }]
+        },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           scales: {
-            x: {
-              display: true,
-              min: minX,
-              max: maxX,
-              ticks: { stepSize: 1 }
-            },
+            x: { display: true, min: minX, max: maxX, ticks: { stepSize: 1 } },
             y: {
               display: true,
               suggestedMin: Math.floor((minY - yStep) / yStep) * yStep,
@@ -153,19 +175,14 @@ function drawAlgebraGraph(a, b) {
               }
             }
           },
-          plugins: {
-            legend: { display: false },
-            tooltip: { enabled: false }
-          },
-          elements: {
-            point: { radius: 0, hoverRadius: 0 }
-          }
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          elements: { point: { radius: 0, hoverRadius: 0 } }
         }
       });
       return;
     }
 
-    // フォールバック（canvas） — 同じく x=-5..5、y の目盛を細かく描画
+    // フォールバック描画
     const ctx = canvas.getContext('2d');
     const ratio = window.devicePixelRatio || 1;
     const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -183,10 +200,8 @@ function drawAlgebraGraph(a, b) {
     let yStep = Math.max(0.5, rangeY / 20);
     if (rangeY > 20) yStep = Math.ceil(yStep);
 
-    // 軸原点のピクセル
     const ys = rangeY || 1;
     const yToPx = (yVal) => h - ((yVal - minY) / ys) * h;
-    // 横グリッド（y目盛り）を描画
     ctx.strokeStyle = '#eee';
     ctx.lineWidth = 1;
     ctx.fillStyle = '#666';
@@ -202,12 +217,10 @@ function drawAlgebraGraph(a, b) {
       ctx.fillText(label, 6, py - 4);
     }
 
-    // x 軸（y=0）を描画（目立たせる）
     const y0px = yToPx(0);
     ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(0, y0px); ctx.lineTo(w, y0px); ctx.stroke();
 
-    // 関数グラフを描画（x を滑らかに）
     ctx.strokeStyle = '#3578e5'; ctx.lineWidth = 2; ctx.beginPath();
     const steps = 200;
     for (let i = 0; i <= steps; i++) {
@@ -240,31 +253,15 @@ function showHint() {
 
 // --- ゲーム制御 ---
 function startGame() {
-  // reset core game state
-  score = 0;
-  level = 1;
-  currentQuestion = 0;
-  correctCount = 0;
-  gameActive = true;
+  score = 0; level = 1; currentQuestion = 0; correctCount = 0; gameActive = true;
+  wrongProblems = []; try { updateWrongProblemsPanel(); } catch (e) { /* ignore */ }
 
-  // clear history and UI results so "再挑戦" で前回の正解率が残らないようにする
-  wrongProblems = [];
-  try { updateWrongProblemsPanel(); } catch (e) { /* ignore */ }
+  const resultSummary = document.getElementById("resultSummary"); if (resultSummary) resultSummary.textContent = "";
+  const answerResult = document.getElementById("answerResult"); if (answerResult) answerResult.textContent = "";
+  const graphAnswerResult = document.getElementById("graphAnswerResult"); if (graphAnswerResult) graphAnswerResult.textContent = "";
+  const tableAnswerResult = document.getElementById("tableAnswerResult"); if (tableAnswerResult) tableAnswerResult.textContent = "";
+  const hintEl = document.getElementById("hintText"); if (hintEl) { hintEl.style.display = "none"; hintEl.textContent = ""; }
 
-  const resultSummary = document.getElementById("resultSummary");
-  if (resultSummary) resultSummary.textContent = "";
-
-  // Clear various result displays if present
-  const answerResult = document.getElementById("answerResult");
-  if (answerResult) answerResult.textContent = "";
-  const graphAnswerResult = document.getElementById("graphAnswerResult");
-  if (graphAnswerResult) graphAnswerResult.textContent = "";
-  const tableAnswerResult = document.getElementById("tableAnswerResult");
-  if (tableAnswerResult) tableAnswerResult.textContent = "";
-  const hintEl = document.getElementById("hintText");
-  if (hintEl) { hintEl.style.display = "none"; hintEl.textContent = ""; }
-
-  // reset displays / stats
   setDifficultyRange(document.getElementById("difficulty").value);
   life = window.lifeLimit;
   timer = window.timeLimit;
@@ -273,21 +270,17 @@ function startGame() {
   const levelEl = document.getElementById("level"); if (levelEl) levelEl.textContent = level;
   const timerEl = document.getElementById("timer"); if (timerEl) timerEl.textContent = (typeof timer !== 'undefined' ? timer : '');
 
-  // hide / show appropriate buttons
   const startBtn = document.getElementById("startBtn"); if (startBtn) startBtn.style.display = "none";
   const retryBtn = document.getElementById("retryBtn"); if (retryBtn) retryBtn.style.display = "none";
   const similarBtn = document.getElementById("similarBtn"); if (similarBtn) similarBtn.style.display = wrongProblems.length > 0 ? "inline-block" : "none";
 
-  // apply settings and begin
   applyCustomRange();
   generateGameQuestion();
 
-  // startTimer might be a no-op if you previously disabled timer; call it for compatibility
   try { startTimer(); } catch (e) { /* ignore */ }
 }
 
 function retryGame() {
-  // wrapper for clarity — retry simply restarts the game and clears prior results
   startGame();
 }
 
@@ -316,7 +309,7 @@ function endGame() {
   const tablePanel = document.getElementById("tablePanel"); if (tablePanel) tablePanel.style.display = "none";
   const qn = document.getElementById("questionNumber"); if (qn) qn.textContent = "";
   const resultSummary = document.getElementById("resultSummary");
-  if (resultSummary) resultSummary.textContent = `終了！正解数: ${correctCount} / ${totalQuestions}（正答率: ${Math.round((correctCount / totalQuestions) * 100)}%）`;
+  if (resultSummary) resultSummary.textContent = `終了！正解数: ${correctCount} / ${totalQuestions}（正答率: ${totalQuestions ? Math.round((correctCount / totalQuestions) * 100) : 0}%）`;
 }
 
 // --- 出題ロジック ---
@@ -451,7 +444,6 @@ function generateTableQuestion() {
     const range = getRanges();
     const a = randInt(range.aMin, range.aMax); const b = randInt(range.bMin, range.bMax);
     currentA = a; currentB = b;
-    // 作る表: x 列と y 列、ランダムに 5 個
     const xs = [];
     for (let i = 0; i < 5; i++) xs.push(randInt(range.xMin, range.xMax));
     xs.sort((u, v) => u - v);
@@ -465,7 +457,6 @@ function generateTableQuestion() {
     tableArea.innerHTML = html;
     const tp = document.getElementById("tablePanel"); if (tp) tp.style.display = "block";
     const tcb = document.getElementById("tableCheckBtn"); if (tcb) tcb.style.display = "inline";
-    // For table check we ask random x from xs
     currentX = xs[randInt(0, xs.length - 1)];
     currentY = a * currentX + b;
     const qEl = document.getElementById("question"); if (qEl) qEl.textContent = `表を見て、x = ${currentX} のときの y の値を答えなさい。`;
@@ -489,7 +480,7 @@ function checkTableAnswer() {
       life--;
       const lifeEl = document.getElementById("life"); if (lifeEl) lifeEl.textContent = life;
     }
-    document.getElementById("score").textContent = score;
+    const scoreEl = document.getElementById("score"); if (scoreEl) scoreEl.textContent = score;
     updateWrongProblemsPanel();
     if (life <= 0) endGame();
     else setTimeout(() => { generateGameQuestion(); }, 700);
@@ -504,7 +495,6 @@ function generateGraphQuestion(withPanel) {
     graphA = a; graphB = b; currentA = a; currentB = b;
     const gp = document.getElementById("graphPanel"); if (gp && withPanel) gp.style.display = "block";
     drawAlgebraGraph(a, b);
-    // 表示設定: グラフ形式に応じた入力
     const mode = document.getElementById('graphMode')?.value || 'ab';
     if (mode === 'ab') {
       const slopeLabel = document.getElementById('slopeLabel'); if (slopeLabel) slopeLabel.style.display = 'inline';
@@ -582,7 +572,6 @@ function checkGraphAnswer() {
       else { if (ar) ar.textContent = `不正解。正解は a=${currentA}, b=${currentB}`; wrongProblems.push({ question: document.getElementById('graphProblem')?.textContent || '', correct: { a: currentA, b: currentB } }); life--; }
     } else {
       const eq = (document.getElementById("equationInput")?.value || '').replace(/\s/g, '');
-      // try parse "y=ax+b" or "ax+b"
       let m = eq.match(/y=([+-]?[0-9]*\.?[0-9]+)x([+-][0-9]*\.?[0-9]+)?/i);
       if (!m) m = eq.match(/([+-]?[0-9]*\.?[0-9]+)x([+-][0-9]*\.?[0-9]+)?/i);
       if (!m) { if (ar) ar.textContent = '式を y=ax+b の形で入力してください'; return; }
@@ -599,13 +588,24 @@ function checkGraphAnswer() {
   } catch (err) { console.error('checkGraphAnswer error:', err); }
 }
 
-// --- 初期バインド（index.html 側の onclick でも呼べるよう関数をグローバルに） ---
+// --- 類似問題ボタン ---
+function challengeSimilarProblem() {
+  if (!wrongProblems || wrongProblems.length === 0) {
+    alert('類似練習候補がありません。');
+    return;
+  }
+  practiceWrongProblem(0);
+}
+
+// --- 初期バインド（index.html の onclick で参照される関数をグローバルに） ---
 window.startGame = startGame;
 window.retryGame = retryGame;
 window.showHint = showHint;
 window.checkAnswer = checkAnswer;
 window.checkGraphAnswer = checkGraphAnswer;
 window.checkTableAnswer = checkTableAnswer;
+window.onProblemTypeChange = onProblemTypeChange;
+window.challengeSimilarProblem = challengeSimilarProblem;
 
 // --- table check binding ---
 function checkTableAnswerBinding() { checkTableAnswer(); }
