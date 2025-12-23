@@ -1,13 +1,21 @@
-// 一次関数ゲーム - 完全修正版 script.js (上書き用)
-// - 省略箇所を復元し、UI 表示制御を整理、必要な関数を全て定義してグローバル公開しています。
-// - index.html の inline handlers (onclick/onchange) と整合するよう window にエクスポート済み。
-// - Chart.js を使った描画 + canvas フォールバックあり。
+// 一次関数ゲーム - 完全版 script.js
+// 2025-12-23 修正版
+//
+// このファイルは index.html の inline handlers (onclick/onchange) と整合するよう
+// 必要な関数を全て定義し、グローバルに公開しています。
+// 主な修正点:
+// - getRanges の定義を確実に用意（console の ReferenceError 対策）
+// - 切れていた window.onProblemTypeChange の修正
+// - 出題・判定関数（generateAlgebraQuestionImproved, generateGraphQuestion,
+//   generateTableQuestion, generateRateQuestion, checkAnswer, checkGraphAnswer,
+//   checkTableAnswer）を実装
+// - Chart.js が無くても描画可能なフォールバックを保持
 
 // --- 状態変数 ---
 let currentA = 1, currentB = 0, currentX = 0, currentY = 0;
-let questionType = "y"; // y, a, b, ab, 2pt, eq, rate
+let questionType = "y"; // 'y' (y を求める), 'a' (a を求める), 'b' (b を求める)
 let graphA = 1, graphB = 0, graphChart = null;
-let currentGameQuestionType = "algebra";
+let currentGameQuestionType = "algebra"; // algebra | graph | table | rate | mix
 
 let score = 0, life = 3, level = 1, timer = 30, timerInterval = null;
 let gameActive = false;
@@ -21,10 +29,11 @@ function clampDecimal(val) { return Math.round(val * 10) / 10; }
 function approxEqual(a, b, eps = 1e-6) { return Math.abs(a - b) < eps; }
 function parseNumber(v) { const n = Number(v); return Number.isFinite(n) ? n : null; }
 
-// getRanges: setDifficultyRange が window.autoRange をセットする想定
+// getRanges: 常に存在するように実装（設定は setDifficultyRange で上書きされる）
 function getRanges() {
   return window.autoRange || { aMin: 1, aMax: 3, bMin: -3, bMax: 3, xMin: 0, xMax: 5 };
 }
+window.getRanges = getRanges;
 
 // --- 回答 UI 表示制御 ---
 function hideAllAnswerUI() {
@@ -344,7 +353,7 @@ function endGame() {
   if (resultSummary) resultSummary.textContent = `終了！正解数: ${correctCount} / ${totalQuestions}（正答率: ${totalQuestions ? Math.round((correctCount / totalQuestions) * 100) : 0}%）`;
 }
 
-// --- 出題ロジック（既定の各出題関数は上で定義済み） ---
+// --- 出題ロジック ---
 function generateGameQuestion() {
   if (!gameActive) return;
   if (currentQuestion >= totalQuestions) { endGame(); return; }
@@ -362,10 +371,255 @@ function generateGameQuestion() {
   focusAnswerInput();
 }
 
+// --- 各種出題関数実装 ---
+// 代入して y を出す問題 / a や b を求めさせる問題
+function generateAlgebraQuestionImproved() {
+  try {
+    const ranges = getRanges();
+    // pick integers for a and b within ranges, avoid zero a if asking for 'a'
+    let a = randInt(ranges.aMin, ranges.aMax);
+    if (a === 0) a = ranges.aMin !== 0 ? ranges.aMin : 1;
+    const b = randInt(ranges.bMin, ranges.bMax);
+    const x = randInt(ranges.xMin, ranges.xMax);
+    currentA = a; currentB = b; currentX = x; currentY = a * x + b;
+
+    // decide which unknown to ask for
+    const modes = ['y','a','b'];
+    questionType = modes[randInt(0, modes.length-1)];
+
+    const qEl = document.getElementById('question');
+    if (!qEl) return;
+    if (questionType === 'y') {
+      qEl.textContent = `次の式のとき、x = ${x} における y の値を求めよ。\ny = ${a}x + ${b}`;
+    } else if (questionType === 'a') {
+      // to ask a, provide x, y and b -> solve a = (y-b)/x (avoid x=0)
+      const x2 = x === 0 ? (x + 1) : x;
+      currentX = x2;
+      currentY = a * x2 + b;
+      qEl.textContent = `次の値から傾き a を求めよ。\nx = ${x2},\ny = ${currentY},\nb = ${b}\n(小数は小数第2位四捨五入)`;
+    } else { // 'b'
+      qEl.textContent = `次の値から切片 b を求めよ。\nx = ${x},\ny = ${currentY},\na = ${a}`;
+    }
+
+    showUIForProblemMode('algebra');
+    // clear inputs
+    ['answerInput','answerInputA','answerInputB'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+  } catch (err) { console.error('generateAlgebraQuestionImproved error:', err); }
+}
+
+// グラフ問題: グラフを表示して a,b を答えさせる or 式を書かせる
+function generateGraphQuestion(showGraph) {
+  try {
+    const ranges = getRanges();
+    graphA = randInt(ranges.aMin, ranges.aMax);
+    graphB = randInt(ranges.bMin, ranges.bMax);
+    // small chance to pick fractional slopes? keep integers for simplicity
+    graphA = graphA === 0 ? 1 : graphA;
+    const qEl = document.getElementById('graphProblem');
+    if (qEl) qEl.textContent = `表示された直線の式を答えなさい。`;
+
+    drawAlgebraGraph(graphA, graphB);
+    const gm = document.getElementById('graphMode')?.value || 'ab';
+    showUIForProblemMode('graph');
+    // clear graph inputs
+    ['slopeInput','interceptInput','equationInput'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+  } catch (err) { console.error('generateGraphQuestion error:', err); }
+}
+
+// 表問題: x 列を与えて y を求める形式
+function generateTableQuestion() {
+  try {
+    const ranges = getRanges();
+    const a = randInt(ranges.aMin, ranges.aMax);
+    const b = randInt(ranges.bMin, ranges.bMax);
+    currentA = a; currentB = b;
+    // create a small table of 4 x values
+    const xs = [];
+    const startX = randInt(Math.max(ranges.xMin, -3), Math.min(ranges.xMax, 3));
+    for (let i = 0; i < 4; i++) xs.push(startX + i);
+    const tableArea = document.getElementById('tableArea');
+    if (!tableArea) return;
+    let html = `<table style="margin:0 auto; border-collapse:collapse;"><tr><th style="padding:6px;border:1px solid #ddd;">x</th>`;
+    xs.forEach(x => html += `<td style="padding:6px;border:1px solid #ddd;">${x}</td>`);
+    html += `</tr><tr><th style="padding:6px;border:1px solid #ddd;">y</th>`;
+    xs.forEach(x => html += `<td style="padding:6px;border:1px solid #ddd;">${a * x + b}</td>`);
+    html += `</tr></table>`;
+    tableArea.innerHTML = html;
+    const qEl = document.getElementById('question');
+    if (qEl) qEl.textContent = `表の中の y の値を読んで問題に答えなさい。\n（下の入力欄には指定された x における y を入力します）`;
+    showUIForProblemMode('table');
+    // save a representative correct answer: we'll ask for the last x's y
+    currentX = xs[xs.length - 1];
+    currentY = a * currentX + b;
+    const ta = document.getElementById('tableAnswerInput'); if (ta) ta.value = "";
+  } catch (err) { console.error('generateTableQuestion error:', err); }
+}
+
+// 変化の割合（傾き）問題
+function generateRateQuestion() {
+  try {
+    const ranges = getRanges();
+    const a = randInt(ranges.aMin, ranges.aMax);
+    const b = randInt(ranges.bMin, ranges.bMax);
+    // pick two distinct x's
+    const x1 = randInt(Math.max(ranges.xMin, -10), Math.min(ranges.xMax, 10));
+    let x2 = x1 + randInt(1, 4);
+    if (x2 === x1) x2 = x1 + 1;
+    const y1 = a * x1 + b;
+    const y2 = a * x2 + b;
+    currentA = a; currentB = b; currentX = x1; currentY = y1;
+    const qEl = document.getElementById('question');
+    if (qEl) qEl.textContent = `次の二点の変化の割合（傾き）を求めよ。\n点1: (${x1}, ${y1})\n点2: (${x2}, ${y2})\n（小数は必要に応じて小数第2位を四捨五入）`;
+    showUIForProblemMode('rate');
+    // store correct slope in currentA (as canonical)
+    currentA = a;
+    const ai = document.getElementById('answerInput'); if (ai) ai.value = "";
+  } catch (err) { console.error('generateRateQuestion error:', err); }
+}
+
+// --- 判定ロジック ---
+function recordWrong(questionText, extra = {}) {
+  wrongProblems.push(Object.assign({ question: questionText }, extra));
+  updateWrongProblemsPanel();
+}
+
+function checkAnswer() {
+  try {
+    const ar = document.getElementById("answerResult");
+    const inputY = parseNumber(document.getElementById("answerInput")?.value);
+    const inputA = parseNumber(document.getElementById("answerInputA")?.value);
+    const inputB = parseNumber(document.getElementById("answerInputB")?.value);
+
+    let ok = false;
+    if (questionType === 'y') {
+      if (inputY === null) { if (ar) ar.textContent = '答えを入力してください。'; return; }
+      ok = approxEqual(inputY, currentY) || inputY === currentY;
+    } else if (questionType === 'a') {
+      if (inputA === null) { if (ar) ar.textContent = '傾き a を入力してください。'; return; }
+      ok = approxEqual(inputA, currentA) || inputA === currentA;
+    } else if (questionType === 'b') {
+      if (inputB === null) { if (ar) ar.textContent = '切片 b を入力してください。'; return; }
+      ok = approxEqual(inputB, currentB) || inputB === currentB;
+    } else {
+      // fallback: if any of the specific fields match
+      if (inputY !== null && (approxEqual(inputY, currentY) || inputY === currentY)) ok = true;
+      if (inputA !== null && (approxEqual(inputA, currentA) || inputA === currentA)) ok = true;
+      if (inputB !== null && (approxEqual(inputB, currentB) || inputB === currentB)) ok = true;
+    }
+
+    if (ok) {
+      score += 10; correctCount++;
+      if (ar) ar.textContent = '正解！';
+    } else {
+      life--; if (ar) ar.textContent = `不正解。正しい答え: ${questionType === 'y' ? currentY : questionType === 'a' ? currentA : currentB}`;
+      recordWrong(document.getElementById('question')?.textContent || '問題', { a: currentA, b: currentB, x: currentX, y: currentY });
+    }
+    const scoreEl = document.getElementById("score"); if (scoreEl) scoreEl.textContent = score;
+    const lifeEl = document.getElementById("life"); if (lifeEl) lifeEl.textContent = life;
+
+    // 次の問題へ
+    setTimeout(() => {
+      if (life <= 0) endGame();
+      else generateGameQuestion();
+    }, 800);
+  } catch (err) { console.error('checkAnswer error:', err); }
+}
+
+function parseEquationString(eqStr) {
+  // 簡易パーサ:  y = ax + b, ax + b, a x + b, etc.
+  // returns {a, b} or null
+  try {
+    if (!eqStr || typeof eqStr !== 'string') return null;
+    // remove spaces
+    let s = eqStr.replace(/\s+/g, '').toLowerCase();
+    // drop leading "y="
+    if (s.startsWith('y=')) s = s.slice(2);
+    // handle forms like "3x+2" or "-x-1" or "2x" or "x+1"
+    const match = s.match(/^([+-]?\d*\.?\d*)x([+-]\d+\.?\d*)?$/);
+    if (!match) {
+      // maybe constant function like "5" or "x"
+      if (/^[+-]?\d+(\.\d+)?$/.test(s)) return { a: 0, b: Number(s) };
+      // maybe only "x"
+      if (s === 'x') return { a: 1, b: 0 };
+      return null;
+    }
+    let aStr = match[1];
+    let bStr = match[2] || '';
+    if (aStr === '' || aStr === '+') aStr = '1';
+    if (aStr === '-') aStr = '-1';
+    const a = Number(aStr);
+    const b = bStr ? Number(bStr) : 0;
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+    return { a, b };
+  } catch (err) { return null; }
+}
+
+function checkGraphAnswer() {
+  try {
+    const ar = document.getElementById("graphAnswerResult");
+    const gm = document.getElementById('graphMode')?.value || 'ab';
+    if (gm === 'ab') {
+      const ia = parseNumber(document.getElementById('slopeInput')?.value);
+      const ib = parseNumber(document.getElementById('interceptInput')?.value);
+      if (ia === null || ib === null) { if (ar) ar.textContent = '傾きと切片を両方入力してください。'; return; }
+      if (approxEqual(ia, graphA) && approxEqual(ib, graphB)) {
+        score += 10; correctCount++; if (ar) ar.textContent = '正解！';
+      } else {
+        life--; if (ar) ar.textContent = `不正解。正しい式: y = ${graphA}x + ${graphB}`;
+        recordWrong(document.getElementById('graphProblem')?.textContent || 'グラフ問題', { a: graphA, b: graphB });
+      }
+    } else {
+      // eq mode: parse equation string
+      const eqs = document.getElementById('equationInput')?.value;
+      const parsed = parseEquationString(eqs);
+      if (!parsed) { if (ar) ar.textContent = '式が認識できません。例: y = 2x + 3'; return; }
+      if (approxEqual(parsed.a, graphA) && approxEqual(parsed.b, graphB)) {
+        score += 10; correctCount++; if (ar) ar.textContent = '正解！';
+      } else {
+        life--; if (ar) ar.textContent = `不正解。正しい式: y = ${graphA}x + ${graphB}`;
+        recordWrong(document.getElementById('graphProblem')?.textContent || 'グラフ問題', { a: graphA, b: graphB });
+      }
+    }
+    const scoreEl = document.getElementById("score"); if (scoreEl) scoreEl.textContent = score;
+    const lifeEl = document.getElementById("life"); if (lifeEl) lifeEl.textContent = life;
+    setTimeout(() => {
+      if (life <= 0) endGame();
+      else generateGameQuestion();
+    }, 800);
+  } catch (err) { console.error('checkGraphAnswer error:', err); }
+}
+
+function checkTableAnswer() {
+  try {
+    const ar = document.getElementById("tableAnswerResult");
+    const val = parseNumber(document.getElementById("tableAnswerInput")?.value);
+    if (val === null) { if (ar) ar.textContent = '答えを入力してください。'; return; }
+    if (approxEqual(val, currentY) || val === currentY) {
+      score += 10; correctCount++; if (ar) ar.textContent = '正解！';
+    } else {
+      life--; if (ar) ar.textContent = `不正解。正しい答え: ${currentY}`;
+      recordWrong(document.getElementById('question')?.textContent || '表問題', { a: currentA, b: currentB, x: currentX, y: currentY });
+    }
+    const scoreEl = document.getElementById("score"); if (scoreEl) scoreEl.textContent = score;
+    const lifeEl = document.getElementById("life"); if (lifeEl) lifeEl.textContent = life;
+    setTimeout(() => {
+      if (life <= 0) endGame();
+      else generateGameQuestion();
+    }, 800);
+  } catch (err) { console.error('checkTableAnswer error:', err); }
+}
+
 // --- graphMode change handler & initial UI bind ---
 function onGraphModeChange() {
   const pt = document.getElementById("problemType")?.value || currentGameQuestionType;
   if (pt === 'graph') showUIForProblemMode('graph');
+}
+function onProblemTypeChange() {
+  const v = document.getElementById("problemType")?.value;
+  if (["algebra","graph","table","rate","mix"].includes(v)) {
+    currentGameQuestionType = v;
+    showUIForProblemMode(v);
+  }
 }
 function initUIBindings() {
   const p = document.getElementById("problemType")?.value || currentGameQuestionType;
@@ -386,7 +640,7 @@ window.checkGraphAnswer = checkGraphAnswer;
 window.checkTableAnswer = checkTableAnswer;
 window.applyCustomRange = applyCustomRange;
 window.setDifficultyRange = setDifficultyRange;
-window.onProblemTypeChange = function() { const v = document.getElementById("problemType")?.value; if (["algebra","graph","table","rate","mix"].includes(v)) { currentGameQuestionType = v; showUIForProblemMode(v); } };
+window.onProblemTypeChange = onProblemTypeChange;
 window.challengeSimilarProblem = function() { if (!wrongProblems || wrongProblems.length === 0) { alert('類似練習候補がありません。'); return; } practiceWrongProblem(0); };
 window.onGraphModeChange = onGraphModeChange;
 
