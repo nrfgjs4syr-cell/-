@@ -1,5 +1,5 @@
-// 一次関数ゲーム - 完全版スクリプト（グラフ描画・判定・ヒント・フォールバック含む）
-// ※ y軸の目盛りを細かく表示するように drawAlgebraGraph を調整しました。
+// 一次関数ゲーム - 修正版スクリプト
+// （Chart.js を使ったグラフ描画、判定、ヒント、フォールバックを含む）
 
 // --- 状態変数 ---
 let currentA = 1, currentB = 0, currentX = 0, currentY = 0;
@@ -123,9 +123,8 @@ function drawAlgebraGraph(a, b) {
       const yVals = data.slice();
       const minY = Math.min(...yVals), maxY = Math.max(...yVals);
       const rangeY = Math.max(1e-6, maxY - minY);
-      // step を自動で細かめに設定（レンジに応じて 0.5〜 のかなり細かい目盛）
+      // step を自動で細かめに設定（レンジに応じて 0.5〜）
       let yStep = Math.max(0.5, rangeY / 20);
-      // もし yStep が整数になった方が見やすければ丸める（小さなレンジなら 0.5 のまま）
       if (rangeY > 20) yStep = Math.ceil(yStep);
 
       const ctx = canvas.getContext('2d');
@@ -144,14 +143,11 @@ function drawAlgebraGraph(a, b) {
             },
             y: {
               display: true,
-              // suggestedMin / suggestedMax をステップに合わせて調整
               suggestedMin: Math.floor((minY - yStep) / yStep) * yStep,
               suggestedMax: Math.ceil((maxY + yStep) / yStep) * yStep,
               ticks: {
                 stepSize: yStep,
-                // 小数の表示を整理
                 callback: function(value) {
-                  // 表示が整数なら整数表示、そうでなければ小数1桁で表示
                   return Number.isInteger(value) ? String(value) : value.toFixed(1);
                 }
               }
@@ -159,7 +155,7 @@ function drawAlgebraGraph(a, b) {
           },
           plugins: {
             legend: { display: false },
-            tooltip: { enabled: false } // ツールチップを無効化
+            tooltip: { enabled: false }
           },
           elements: {
             point: { radius: 0, hoverRadius: 0 }
@@ -195,16 +191,13 @@ function drawAlgebraGraph(a, b) {
     ctx.lineWidth = 1;
     ctx.fillStyle = '#666';
     ctx.font = '12px sans-serif';
-    // 始点を yStep の倍数に揃える
     const startY = Math.floor(minY / yStep) * yStep;
     for (let yLine = startY; yLine <= maxY + 1e-9; yLine = Math.round((yLine + yStep) * 1000000) / 1000000) {
       const py = yToPx(yLine);
-      // グリッド
       ctx.beginPath();
       ctx.moveTo(0, py);
       ctx.lineTo(w, py);
       ctx.stroke();
-      // ラベル（左端）
       const label = Number.isInteger(yLine) ? String(yLine) : yLine.toFixed(1);
       ctx.fillText(label, 6, py - 4);
     }
@@ -214,12 +207,14 @@ function drawAlgebraGraph(a, b) {
     ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(0, y0px); ctx.lineTo(w, y0px); ctx.stroke();
 
-    // 関数グラフを描画
+    // 関数グラフを描画（x を滑らかに）
     ctx.strokeStyle = '#3578e5'; ctx.lineWidth = 2; ctx.beginPath();
-    for (let i = 0; i <= (maxX - minX); i++) {
-      const xVal = minX + i;
+    const steps = 200;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const xVal = minX + t * (maxX - minX);
       const yVal = a * xVal + b;
-      const px = (i / (maxX - minX)) * w;
+      const px = t * w;
       const py = yToPx(yVal);
       if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
     }
@@ -294,7 +289,7 @@ function startGame() {
 function retryGame() {
   // wrapper for clarity — retry simply restarts the game and clears prior results
   startGame();
-} retryGame() { startGame(); }
+}
 
 function startTimer() {
   if (timerInterval) clearInterval(timerInterval);
@@ -492,10 +487,12 @@ function checkTableAnswer() {
       if (res) res.textContent = `不正解。正解は ${currentY} です。`;
       wrongProblems.push({ question: document.getElementById('question')?.textContent || '', correct: currentY });
       life--;
-      document.getElementById("life").textContent = life;
+      const lifeEl = document.getElementById("life"); if (lifeEl) lifeEl.textContent = life;
     }
+    document.getElementById("score").textContent = score;
     updateWrongProblemsPanel();
-    setTimeout(() => { generateGameQuestion(); }, 700);
+    if (life <= 0) endGame();
+    else setTimeout(() => { generateGameQuestion(); }, 700);
   } catch (err) { console.error(err); }
 }
 
@@ -509,8 +506,17 @@ function generateGraphQuestion(withPanel) {
     drawAlgebraGraph(a, b);
     // 表示設定: グラフ形式に応じた入力
     const mode = document.getElementById('graphMode')?.value || 'ab';
-    if (mode === 'ab') { document.getElementById('slopeLabel').style.display = 'inline'; document.getElementById('interceptLabel').style.display = 'inline'; document.getElementById('graphCheckBtn').style.display = 'inline'; document.getElementById('equationInput').style.display = 'none'; }
-    else { document.getElementById('equationInput').style.display = 'inline'; document.getElementById('graphCheckBtn').style.display = 'inline'; document.getElementById('slopeLabel').style.display = 'none'; document.getElementById('interceptLabel').style.display = 'none'; }
+    if (mode === 'ab') {
+      const slopeLabel = document.getElementById('slopeLabel'); if (slopeLabel) slopeLabel.style.display = 'inline';
+      const interceptLabel = document.getElementById('interceptLabel'); if (interceptLabel) interceptLabel.style.display = 'inline';
+      const eqInput = document.getElementById('equationInput'); if (eqInput) eqInput.style.display = 'none';
+      const graphCheckBtn = document.getElementById('graphCheckBtn'); if (graphCheckBtn) graphCheckBtn.style.display = 'inline';
+    } else {
+      const slopeLabel = document.getElementById('slopeLabel'); if (slopeLabel) slopeLabel.style.display = 'none';
+      const interceptLabel = document.getElementById('interceptLabel'); if (interceptLabel) interceptLabel.style.display = 'none';
+      const eqInput = document.getElementById('equationInput'); if (eqInput) eqInput.style.display = 'inline';
+      const graphCheckBtn = document.getElementById('graphCheckBtn'); if (graphCheckBtn) graphCheckBtn.style.display = 'inline';
+    }
     questionType = 'eq';
     const qEl = document.getElementById("graphProblem"); if (qEl) qEl.textContent = 'グラフを見て a,b を答えてください。';
     focusAnswerInput();
@@ -526,37 +532,37 @@ function checkAnswer() {
       const v = parseNumber(ai?.value);
       if (v === null) { if (ar) ar.textContent = '数値を入力してください。'; return; }
       if (approxEqual(v, currentY)) { if (ar) ar.textContent = '正解！'; correctCount++; score += 10; }
-      else { if (ar) ar.textContent = `不正解。正解は ${currentY} です。`; wrongProblems.push({ question: document.getElementById('question')?.textContent || '', correct: currentY }); life--; document.getElementById("life").textContent = life; }
+      else { if (ar) ar.textContent = `不正解。正解は ${currentY} です。`; wrongProblems.push({ question: document.getElementById('question')?.textContent || '', correct: currentY }); life--; }
     } else if (questionType === 'a') {
       const ai = document.getElementById("answerInput");
       const v = parseNumber(ai?.value);
       if (v === null) { if (ar) ar.textContent = '数値を入力してください。'; return; }
       if (approxEqual(v, currentA)) { if (ar) ar.textContent = '正解！'; correctCount++; score += 10; }
-      else { if (ar) ar.textContent = `不正解。正解は ${currentA} です。`; wrongProblems.push({ question: document.getElementById('question')?.textContent || '', correct: currentA }); life--; document.getElementById("life").textContent = life; }
+      else { if (ar) ar.textContent = `不正解。正解は ${currentA} です。`; wrongProblems.push({ question: document.getElementById('question')?.textContent || '', correct: currentA }); life--; }
     } else if (questionType === 'b') {
       const ai = document.getElementById("answerInput");
       const v = parseNumber(ai?.value);
       if (v === null) { if (ar) ar.textContent = '数値を入力してください。'; return; }
       if (approxEqual(v, currentB)) { if (ar) ar.textContent = '正解！'; correctCount++; score += 10; }
-      else { if (ar) ar.textContent = `不正解。正解は ${currentB} です。`; wrongProblems.push({ question: document.getElementById('question')?.textContent || '', correct: currentB }); life--; document.getElementById("life").textContent = life; }
+      else { if (ar) ar.textContent = `不正解。正解は ${currentB} です。`; wrongProblems.push({ question: document.getElementById('question')?.textContent || '', correct: currentB }); life--; }
     } else if (questionType === '2pt' || questionType === 'rate') {
       const ai = document.getElementById("answerInput");
       const v = parseNumber(ai?.value);
       if (v === null) { if (ar) ar.textContent = '数値を入力してください。'; return; }
       if (approxEqual(v, currentA)) { if (ar) ar.textContent = '正解！'; correctCount++; score += 10; }
-      else { if (ar) ar.textContent = `不正解。正解は ${currentA} です。`; wrongProblems.push({ question: document.getElementById('question')?.textContent || '', correct: currentA }); life--; document.getElementById("life").textContent = life; }
+      else { if (ar) ar.textContent = `不正解。正解は ${currentA} です。`; wrongProblems.push({ question: document.getElementById('question')?.textContent || '', correct: currentA }); life--; }
     } else if (questionType === 'ab' || questionType === 'eq') {
-      // ab/eq handled by graph inputs as well, but also allow answerInputA/B
       const aIn = parseNumber(document.getElementById("answerInputA")?.value);
       const bIn = parseNumber(document.getElementById("answerInputB")?.value);
       if (aIn === null || bIn === null) { if (ar) ar.textContent = 'a, b を入力してください。'; return; }
       if (approxEqual(aIn, currentA) && approxEqual(bIn, currentB)) { if (ar) ar.textContent = '正解！'; correctCount++; score += 10; }
-      else { if (ar) ar.textContent = `不正解。正解は a=${currentA}, b=${currentB} です。`; wrongProblems.push({ question: document.getElementById('question')?.textContent || '', correct: { a: currentA, b: currentB } }); life--; document.getElementById("life").textContent = life; }
+      else { if (ar) ar.textContent = `不正解。正解は a=${currentA}, b=${currentB} です。`; wrongProblems.push({ question: document.getElementById('question')?.textContent || '', correct: { a: currentA, b: currentB } }); life--; }
     } else {
       if (ar) ar.textContent = '判定できません。';
     }
 
-    document.getElementById("score").textContent = score;
+    const scoreEl = document.getElementById("score"); if (scoreEl) scoreEl.textContent = score;
+    const lifeEl = document.getElementById("life"); if (lifeEl) lifeEl.textContent = life;
     updateWrongProblemsPanel();
     if (life <= 0) endGame();
     else setTimeout(() => { generateGameQuestion(); }, 700);
@@ -573,7 +579,7 @@ function checkGraphAnswer() {
       const bIn = parseNumber(document.getElementById("interceptInput")?.value || document.getElementById("answerInputB")?.value);
       if (aIn === null || bIn === null) { if (ar) ar.textContent = 'a, b を入力してください'; return; }
       if (approxEqual(aIn, currentA) && approxEqual(bIn, currentB)) { if (ar) ar.textContent = '正解！'; correctCount++; score += 10; }
-      else { if (ar) ar.textContent = `不正解。正解は a=${currentA}, b=${currentB}`; wrongProblems.push({ question: document.getElementById('graphProblem')?.textContent || '', correct: { a: currentA, b: currentB } }); life--; document.getElementById("life").textContent = life; }
+      else { if (ar) ar.textContent = `不正解。正解は a=${currentA}, b=${currentB}`; wrongProblems.push({ question: document.getElementById('graphProblem')?.textContent || '', correct: { a: currentA, b: currentB } }); life--; }
     } else {
       const eq = (document.getElementById("equationInput")?.value || '').replace(/\s/g, '');
       // try parse "y=ax+b" or "ax+b"
@@ -583,9 +589,10 @@ function checkGraphAnswer() {
       const aIn = parseNumber(m[1]); const bIn = parseNumber(m[2] || '0');
       if (aIn === null || bIn === null) { if (ar) ar.textContent = '数値を正しく入力してください'; return; }
       if (approxEqual(aIn, currentA) && approxEqual(bIn, currentB)) { if (ar) ar.textContent = '正解！'; correctCount++; score += 10; }
-      else { if (ar) ar.textContent = `不正解。正解は a=${currentA}, b=${currentB}`; wrongProblems.push({ question: document.getElementById('graphProblem')?.textContent || '', correct: { a: currentA, b: currentB } }); life--; document.getElementById("life").textContent = life; }
+      else { if (ar) ar.textContent = `不正解。正解は a=${currentA}, b=${currentB}`; wrongProblems.push({ question: document.getElementById('graphProblem')?.textContent || '', correct: { a: currentA, b: currentB } }); life--; }
     }
-    document.getElementById("score").textContent = score;
+    const scoreEl = document.getElementById("score"); if (scoreEl) scoreEl.textContent = score;
+    const lifeEl = document.getElementById("life"); if (lifeEl) lifeEl.textContent = life;
     updateWrongProblemsPanel();
     if (life <= 0) endGame();
     else setTimeout(() => { generateGameQuestion(); }, 700);
