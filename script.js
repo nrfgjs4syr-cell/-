@@ -1,6 +1,5 @@
 // 一次関数ゲーム - 完全修正版 script.js
 // - 省略箇所を復元し、UI 表示制御を整理、グローバル公開を正しく実施
-// - index.html の inline handlers (onclick/onchange) から呼び出せるよう window に主要関数を公開
 // - Chart.js を使ったグラフ描画 + canvas フォールバックあり
 
 // --- 状態変数 ---
@@ -21,91 +20,77 @@ function clampDecimal(val) { return Math.round(val * 10) / 10; }
 function approxEqual(a, b, eps = 1e-6) { return Math.abs(a - b) < eps; }
 function parseNumber(v) { const n = Number(v); return Number.isFinite(n) ? n : null; }
 
-// --- UI: 回答エリア表示制御（全体） ---
-function uiHideAllAnswerUI() {
-  // hide fields & buttons used for answers
-  const ids = ["answerInput","answerInputA","answerInputB","equationInput","slopeInput","interceptInput","tableAnswerInput"];
-  ids.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = "none"; });
-  ["checkBtn","graphCheckBtn","hintBtn","tableCheckBtn"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = "none"; });
+// getRanges: 難易度で setDifficultyRange により window.autoRange が設定される想定
+function getRanges() {
+  return window.autoRange || { aMin: 1, aMax: 3, bMin: -3, bMax: 3, xMin: 0, xMax: 5 };
+}
+
+// --- 回答 UI 表示制御 ---
+function hideAllAnswerUI() {
+  const ar = document.getElementById("answerResult"); if (ar) ar.textContent = "";
+  const hint = document.getElementById("hintText"); if (hint) { hint.style.display = "none"; hint.textContent = ""; }
+
+  ["answerInput","answerInputA","answerInputB","equationInput","slopeInput","interceptInput","tableAnswerInput"].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display = "none";
+  });
+
+  ["checkBtn","graphCheckBtn","hintBtn","tableCheckBtn"].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display = "none";
+  });
+
   const gp = document.getElementById("graphPanel"); if (gp) gp.style.display = "none";
   const tp = document.getElementById("tablePanel"); if (tp) tp.style.display = "none";
   const slopeLabel = document.getElementById('slopeLabel'); if (slopeLabel) slopeLabel.style.display = 'none';
   const interceptLabel = document.getElementById('interceptLabel'); if (interceptLabel) interceptLabel.style.display = 'none';
-  // clear small result areas
-  const ar = document.getElementById("answerResult"); if (ar) ar.textContent = "";
   const gar = document.getElementById("graphAnswerResult"); if (gar) gar.textContent = "";
   const tar = document.getElementById("tableAnswerResult"); if (tar) tar.textContent = "";
 }
 
-// Show appropriate answer UI for a given "problemMode" (algebra/graph/table/rate/mix)
 function showUIForProblemMode(mode) {
-  uiHideAllAnswerUI();
+  hideAllAnswerUI();
   const graphMode = document.getElementById('graphMode')?.value || 'ab';
-  const answerInput = document.getElementById("answerInput");
-  const answerA = document.getElementById("answerInputA");
-  const answerB = document.getElementById("answerInputB");
-  const eqInput = document.getElementById("equationInput");
-  const slopeLabel = document.getElementById('slopeLabel');
-  const interceptLabel = document.getElementById('interceptLabel');
-  const slopeInput = document.getElementById('slopeInput');
-  const interceptInput = document.getElementById('interceptInput');
-  const checkBtn = document.getElementById("checkBtn");
-  const graphCheckBtn = document.getElementById("graphCheckBtn");
-  const hintBtn = document.getElementById("hintBtn");
-  const tablePanel = document.getElementById("tablePanel");
-  const tableAnswerInput = document.getElementById("tableAnswerInput");
-  const tableCheckBtn = document.getElementById("tableCheckBtn");
-  const graphPanel = document.getElementById("graphPanel");
 
-  if (mode === "algebra") {
-    // Show generic numeric input and allow a/b inputs for "ab" style problems
-    if (answerInput) answerInput.style.display = 'inline';
-    if (answerA) answerA.style.display = 'inline';
-    if (answerB) answerB.style.display = 'inline';
-    if (checkBtn) checkBtn.style.display = 'inline';
-    if (hintBtn) hintBtn.style.display = 'inline';
-  } else if (mode === "graph") {
-    // Show graph-related inputs depending on graphMode
+  if (mode === 'algebra') {
+    const ai = document.getElementById("answerInput"); if (ai) ai.style.display = 'inline';
+    const aA = document.getElementById("answerInputA"); if (aA) aA.style.display = 'inline';
+    const aB = document.getElementById("answerInputB"); if (aB) aB.style.display = 'inline';
+    const cb = document.getElementById("checkBtn"); if (cb) cb.style.display = 'inline';
+    const hb = document.getElementById("hintBtn"); if (hb) hb.style.display = 'inline';
+  } else if (mode === 'graph') {
+    const gp = document.getElementById("graphPanel"); if (gp) gp.style.display = 'block';
     if (graphMode === 'ab') {
-      if (slopeLabel) slopeLabel.style.display = 'inline';
-      if (interceptLabel) interceptLabel.style.display = 'inline';
-      if (graphCheckBtn) graphCheckBtn.style.display = 'inline';
-      if (slopeInput) slopeInput.style.display = 'inline';
-      if (interceptInput) interceptInput.style.display = 'inline';
+      const slopeLabel = document.getElementById('slopeLabel'); if (slopeLabel) slopeLabel.style.display = 'inline';
+      const interceptLabel = document.getElementById('interceptLabel'); if (interceptLabel) interceptLabel.style.display = 'inline';
+      const graphCheck = document.getElementById('graphCheckBtn'); if (graphCheck) graphCheck.style.display = 'inline';
+      const sI = document.getElementById('slopeInput'); if (sI) sI.style.display = 'inline';
+      const iI = document.getElementById('interceptInput'); if (iI) iI.style.display = 'inline';
     } else {
-      if (eqInput) eqInput.style.display = 'inline';
-      if (graphCheckBtn) graphCheckBtn.style.display = 'inline';
+      const eq = document.getElementById('equationInput'); if (eq) eq.style.display = 'inline';
+      const graphCheck = document.getElementById('graphCheckBtn'); if (graphCheck) graphCheck.style.display = 'inline';
     }
-    if (graphPanel) graphPanel.style.display = 'block';
-    if (hintBtn) hintBtn.style.display = 'inline';
-  } else if (mode === "table") {
-    if (tablePanel) tablePanel.style.display = 'block';
-    if (tableAnswerInput) tableAnswerInput.style.display = 'inline';
-    if (tableCheckBtn) tableCheckBtn.style.display = 'inline';
-    if (hintBtn) hintBtn.style.display = 'inline';
-  } else if (mode === "rate") {
-    if (answerInput) answerInput.style.display = 'inline';
-    if (checkBtn) checkBtn.style.display = 'inline';
-    if (hintBtn) hintBtn.style.display = 'inline';
-  } else if (mode === "mix") {
-    // show most controls
-    if (answerInput) answerInput.style.display = 'inline';
-    if (answerA) answerA.style.display = 'inline';
-    if (answerB) answerB.style.display = 'inline';
-    if (eqInput) eqInput.style.display = 'inline';
-    if (checkBtn) checkBtn.style.display = 'inline';
-    if (graphCheckBtn) graphCheckBtn.style.display = 'inline';
-    if (graphPanel) graphPanel.style.display = 'block';
-    if (tablePanel) tablePanel.style.display = 'block';
-    if (hintBtn) hintBtn.style.display = 'inline';
+    const hb = document.getElementById("hintBtn"); if (hb) hb.style.display = 'inline';
+  } else if (mode === 'table') {
+    const tp = document.getElementById("tablePanel"); if (tp) tp.style.display = 'block';
+    const ta = document.getElementById("tableAnswerInput"); if (ta) ta.style.display = 'inline';
+    const tcb = document.getElementById("tableCheckBtn"); if (tcb) tcb.style.display = 'inline';
+    const hb = document.getElementById("hintBtn"); if (hb) hb.style.display = 'inline';
+  } else if (mode === 'rate') {
+    const ai = document.getElementById("answerInput"); if (ai) ai.style.display = 'inline';
+    const cb = document.getElementById("checkBtn"); if (cb) cb.style.display = 'inline';
+    const hb = document.getElementById("hintBtn"); if (hb) hb.style.display = 'inline';
+  } else if (mode === 'mix') {
+    const ids = ["answerInput","answerInputA","answerInputB","equationInput","tableAnswerInput"];
+    ids.forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'inline'; });
+    ["checkBtn","graphCheckBtn","tableCheckBtn","hintBtn"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'inline'; });
+    const gp = document.getElementById("graphPanel"); if (gp) gp.style.display = 'block';
+    const tp = document.getElementById("tablePanel"); if (tp) tp.style.display = 'block';
   } else {
-    // fallback
-    if (answerInput) answerInput.style.display = 'inline';
-    if (checkBtn) checkBtn.style.display = 'inline';
+    const ai = document.getElementById("answerInput"); if (ai) ai.style.display = 'inline';
+    const cb = document.getElementById("checkBtn"); if (cb) cb.style.display = 'inline';
   }
 }
 
-// --- wrongProblems 表示更新 ---
+// --- wrongProblems panel 更新 ---
 function updateWrongProblemsPanel() {
   try {
     const panel = document.getElementById('similarProblemsPanel');
@@ -133,13 +118,11 @@ function updateWrongProblemsPanel() {
     });
   } catch (err) { console.error('updateWrongProblemsPanel error:', err); }
 }
-
 function practiceWrongProblem(idx) {
   const p = wrongProblems[idx];
   if (!p) return;
   const qEl = document.getElementById('question');
   if (qEl) qEl.textContent = `類似練習: ${p.question || String(p)}`;
-  // show algebraic inputs by default for practice
   showUIForProblemMode('algebra');
   focusAnswerInput();
 }
@@ -147,14 +130,13 @@ function practiceWrongProblem(idx) {
 // --- フォーカス / Enter 判定バインド ---
 function focusAnswerInput() {
   setTimeout(() => {
-    const ids = ["answerInput", "answerInputA", "answerInputB", "equationInput", "slopeInput", "interceptInput", "tableAnswerInput"];
+    const ids = ["answerInput","answerInputA","answerInputB","equationInput","slopeInput","interceptInput","tableAnswerInput"];
     for (const id of ids) {
       const el = document.getElementById(id);
       if (el && el.style.display !== "none") { try { el.focus(); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch { } break; }
     }
   }, 200);
 }
-
 function attachInputKeyEvents() {
   const check = () => { const cb = document.getElementById("checkBtn"); if (cb && cb.style.display !== "none") checkAnswer(); };
   const graphCheck = () => { const gcb = document.getElementById("graphCheckBtn"); if (gcb && gcb.style.display !== "none") checkGraphAnswer(); };
@@ -171,7 +153,6 @@ function attachInputKeyEvents() {
       }
     }
   });
-  // touchend for startBtn (mobile)
   const startBtn = document.getElementById('startBtn');
   if (startBtn && !startBtn._touchBound) {
     startBtn.addEventListener('touchend', (e) => { e.preventDefault(); startBtn.click(); }, { passive: false });
@@ -181,7 +162,7 @@ function attachInputKeyEvents() {
 if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', attachInputKeyEvents);
 else attachInputKeyEvents();
 
-// --- 難易度 / 範囲 ---
+// --- difficulty / ranges ---
 function getLifeLimitByDifficulty(d) { return d === "easy" ? 5 : d === "normal" ? 4 : 3; }
 function getTimeLimitByDifficulty(d) { return d === "easy" ? 45 : d === "normal" ? 60 : 40; }
 function setDifficultyRange(difficulty) {
@@ -195,10 +176,8 @@ function setDifficultyRange(difficulty) {
   window.lifeLimit = getLifeLimitByDifficulty(difficulty);
   window.timeLimit = getTimeLimitByDifficulty(difficulty);
 }
-
 function applyCustomRange() {
-  const el = document.getElementById("totalQuestionsInput");
-  const v = el ? Number(el.value) : totalQuestions;
+  const v = Number(document.getElementById("totalQuestionsInput")?.value || totalQuestions);
   if (v >= 1) totalQuestions = v;
 }
 
@@ -207,7 +186,6 @@ function drawAlgebraGraph(a, b) {
   try {
     const canvas = document.getElementById('graphCanvas');
     if (!canvas) return;
-    // Use Chart.js when available
     if (window.Chart) {
       if (graphChart) { try { graphChart.destroy(); } catch {} graphChart = null; }
       const labels = [];
@@ -259,7 +237,7 @@ function drawAlgebraGraph(a, b) {
       return;
     }
 
-    // Canvas fallback
+    // canvas fallback
     const ctx = canvas.getContext('2d');
     const ratio = window.devicePixelRatio || 1;
     const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -267,20 +245,17 @@ function drawAlgebraGraph(a, b) {
     canvas.height = Math.max(200, Math.floor(h * ratio));
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#f9f9f9';
-    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#f9f9f9'; ctx.fillRect(0, 0, w, h);
 
     const minX = -5, maxX = 5;
     const yVals = []; for (let x = minX; x <= maxX; x++) yVals.push(a * x + b);
     const minY = Math.min(...yVals), maxY = Math.max(...yVals);
     const rangeY = Math.max(1e-6, maxY - minY);
-    let yStep = Math.max(0.5, rangeY / 20);
-    if (rangeY > 20) yStep = Math.ceil(yStep);
+    let yStep = Math.max(0.5, rangeY / 20); if (rangeY > 20) yStep = Math.ceil(yStep);
 
     const ys = rangeY || 1;
     const yToPx = (yVal) => h - ((yVal - minY) / ys) * h;
 
-    // horizontal grid and labels
     ctx.strokeStyle = '#eee'; ctx.lineWidth = 1; ctx.fillStyle = '#666'; ctx.font = '12px sans-serif';
     const startY = Math.floor(minY / yStep) * yStep;
     for (let yLine = startY; yLine <= maxY + 1e-9; yLine = Math.round((yLine + yStep) * 1000000) / 1000000) {
@@ -289,11 +264,9 @@ function drawAlgebraGraph(a, b) {
       const label = Number.isInteger(yLine) ? String(yLine) : yLine.toFixed(1);
       ctx.fillText(label, 6, py - 4);
     }
-    // x-axis (y=0)
     const y0px = yToPx(0);
     ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, y0px); ctx.lineTo(w, y0px); ctx.stroke();
 
-    // plot function smoothly
     ctx.strokeStyle = '#3578e5'; ctx.lineWidth = 2; ctx.beginPath();
     const steps = 200;
     for (let i = 0; i <= steps; i++) {
@@ -305,9 +278,7 @@ function drawAlgebraGraph(a, b) {
       if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
     }
     ctx.stroke();
-  } catch (err) {
-    console.error('drawAlgebraGraph error:', err);
-  }
+  } catch (err) { console.error('drawAlgebraGraph error:', err); }
 }
 
 // --- ヒント表示 ---
@@ -336,7 +307,7 @@ function startGame() {
   const tableAnswerResult = document.getElementById("tableAnswerResult"); if (tableAnswerResult) tableAnswerResult.textContent = "";
   const hintEl = document.getElementById("hintText"); if (hintEl) { hintEl.style.display = "none"; hintEl.textContent = ""; }
 
-  setDifficultyRange(document.getElementById("difficulty").value);
+  setDifficultyRange(document.getElementById("difficulty")?.value || 'easy');
   life = window.lifeLimit; timer = window.timeLimit;
   const scoreEl = document.getElementById("score"); if (scoreEl) scoreEl.textContent = score;
   const lifeEl = document.getElementById("life"); if (lifeEl) lifeEl.textContent = life;
@@ -351,7 +322,6 @@ function startGame() {
   generateGameQuestion();
   try { startTimer(); } catch (e) {}
 }
-
 function retryGame() { startGame(); }
 
 function startTimer() {
@@ -381,14 +351,13 @@ function endGame() {
   if (resultSummary) resultSummary.textContent = `終了！正解数: ${correctCount} / ${totalQuestions}（正答率: ${totalQuestions ? Math.round((correctCount / totalQuestions) * 100) : 0}%）`;
 }
 
-// --- 出題ロジック ---
+// --- 出題ロジック ----------
 function generateGameQuestion() {
   if (!gameActive) return;
   if (currentQuestion >= totalQuestions) { endGame(); return; }
   currentQuestion++;
   const qnEl = document.getElementById("questionNumber"); if (qnEl) qnEl.textContent = `【第${currentQuestion}問 / 全${totalQuestions}問】`;
-  uiHideAllAnswerUI();
-
+  hideAllAnswerUI();
   let type = currentGameQuestionType;
   if (type === "mix") { const arr = ["algebra","graph","table","rate"]; type = arr[randInt(0, arr.length-1)]; }
 
@@ -400,279 +369,20 @@ function generateGameQuestion() {
   focusAnswerInput();
 }
 
-// --- アルジェブラ出題（改善版） ---
-function generateAlgebraQuestionImproved() {
-  if (!gameActive) return;
-  const range = getRanges();
-  const difficulty = document.getElementById("difficulty").value || "easy";
-  const pool = difficulty === "easy" ? ["y","ab","y"] : difficulty === "normal" ? ["y","a","b","2pt"] : ["y","a","b","2pt","eq","y"];
-  questionType = pool[randInt(0, pool.length - 1)];
+// 以下の個別出題・判定関数は上で既に定義済み（generateAlgebraQuestionImproved, generateGraphQuestion, generateTableQuestion, generateRateQuestion,
+// checkAnswer, checkGraphAnswer, checkTableAnswer）
 
-  let a = randInt(range.aMin, range.aMax);
-  let b = randInt(range.bMin, range.bMax);
-  if (difficulty === "hard" && Math.random() < 0.35) {
-    a = clampDecimal(a + (Math.random() < 0.5 ? -0.5 : 0.5));
-    b = clampDecimal(b + (Math.random() < 0.5 ? -0.5 : 0.5));
-  }
-  if (a === 0) a = (range.aMin <= 1 && range.aMax >= 1) ? 1 : (range.aMin || 1);
-
-  currentA = a; currentB = b;
-
-  if (questionType === "y") {
-    currentX = randInt(range.xMin, range.xMax);
-    currentY = currentA * currentX + currentB;
-    const qEl = document.getElementById("question"); if (qEl) qEl.textContent = `一次関数 y = ax + b のとき、x = ${currentX} の y の値はいくつですか？`;
-    showUIForProblemMode('algebra');
-    // only numeric answer is required
-    const ai = document.getElementById("answerInput"); if (ai) ai.style.display = 'inline';
-    const cb = document.getElementById("checkBtn"); if (cb) cb.style.display = 'inline';
-    focusAnswerInput();
-    return;
-  }
-  if (questionType === "a") {
-    currentX = randInt(range.xMin || -5, range.xMax || 5);
-    currentY = currentA * currentX + currentB;
-    const qEl = document.getElementById("question"); if (qEl) qEl.textContent = `x = ${currentX} のとき、y = ${currentY} となる一次関数の傾き a を求めなさい。`;
-    showUIForProblemMode('algebra');
-    const ai = document.getElementById("answerInput"); if (ai) ai.style.display = 'inline';
-    const cb = document.getElementById("checkBtn"); if (cb) cb.style.display = 'inline';
-    focusAnswerInput();
-    return;
-  }
-  if (questionType === "b") {
-    currentX = randInt(range.xMin || -5, range.xMax || 5);
-    currentY = currentA * currentX + currentB;
-    const qEl = document.getElementById("question"); if (qEl) qEl.textContent = `x = ${currentX} のとき、y = ${currentY} となる一次関数の切片 b を求めなさい。`;
-    showUIForProblemMode('algebra');
-    const ai = document.getElementById("answerInput"); if (ai) ai.style.display = 'inline';
-    const cb = document.getElementById("checkBtn"); if (cb) cb.style.display = 'inline';
-    focusAnswerInput();
-    return;
-  }
-  if (questionType === "ab") {
-    const qEl = document.getElementById("question"); if (qEl) qEl.textContent = `次の一次関数の a（傾き）と b（切片）を答えてください。`;
-    showUIForProblemMode('graph'); // graph-style a/b entry + show graph
-    try { drawAlgebraGraph(currentA, currentB); } catch(e) {}
-    focusAnswerInput();
-    return;
-  }
-  if (questionType === "2pt") {
-    let x1 = randInt(range.xMin, range.xMax);
-    let x2 = randInt(range.xMin, range.xMax);
-    while (x2 === x1) x2 = randInt(range.xMin, range.xMax);
-    const y1 = currentA * x1 + currentB;
-    const y2 = currentA * x2 + currentB;
-    currentA = (y2 - y1) / (x2 - x1);
-    const qEl = document.getElementById("question"); if (qEl) qEl.textContent = `点 (${x1}, ${y1}) と (${x2}, ${y2}) を通る直線の傾き a を求めなさい。`;
-    showUIForProblemMode('algebra');
-    const ai = document.getElementById("answerInput"); if (ai) ai.style.display = 'inline';
-    const cb = document.getElementById("checkBtn"); if (cb) cb.style.display = 'inline';
-    focusAnswerInput();
-    return;
-  }
-  if (questionType === "eq") {
-    const qEl = document.getElementById("question"); if (qEl) qEl.textContent = `下のグラフを見て、一次関数の式 y = ax + b の a と b を答えてください。`;
-    showUIForProblemMode('graph');
-    try { drawAlgebraGraph(currentA, currentB); } catch(e) {}
-    focusAnswerInput();
-    return;
-  }
-
-  // default fallback show some UI
-  showUIForProblemMode('algebra');
-  try { drawAlgebraGraph(currentA, currentB); } catch(e) {}
-  focusAnswerInput();
-}
-
-// ----- 変化の割合（rate） -----
-function generateRateQuestion() {
-  if (!gameActive) return;
-  const range = getRanges();
-  let a = randInt(range.aMin, range.aMax); if (a === 0) a = 1;
-  let b = randInt(range.bMin, range.bMax);
-  let x1 = randInt(range.xMin, range.xMax);
-  let x2 = randInt(range.xMin, range.xMax);
-  while (x2 === x1) x2 = randInt(range.xMin, range.xMax);
-  const y1 = a * x1 + b;
-  const y2 = a * x2 + b;
-  currentA = (y2 - y1) / (x2 - x1);
-  currentB = null; currentX = null; currentY = null;
-  questionType = "rate";
-  const qEl = document.getElementById("question"); if (qEl) qEl.textContent = `点 (${x1}, ${y1}) と (${x2}, ${y2}) の変化の割合（Δy/Δx）を求めなさい。`;
-  showUIForProblemMode('rate');
-  try { drawAlgebraGraph(a, b); } catch (e) {}
-  focusAnswerInput();
-}
-
-// --- 表問題 ---
-function generateTableQuestion() {
-  try {
-    const range = getRanges();
-    const a = randInt(range.aMin, range.aMax); const b = randInt(range.bMin, range.bMax);
-    currentA = a; currentB = b;
-    const xs = [];
-    for (let i = 0; i < 5; i++) xs.push(randInt(range.xMin, range.xMax));
-    xs.sort((u,v) => u - v);
-    const tableArea = document.getElementById('tableArea');
-    if (!tableArea) return;
-    let html = '<table style="width:100%; border-collapse:collapse;"><tr>';
-    xs.forEach(x => html += `<th style="padding:6px; text-align:center; border:1px solid #eee;">x=${x}</th>`);
-    html += '</tr><tr>';
-    xs.forEach(x => html += `<td style="padding:8px; text-align:center; border:1px solid #eee;">${a * x + b}</td>`);
-    html += '</tr></table>';
-    tableArea.innerHTML = html;
-    const tp = document.getElementById("tablePanel"); if (tp) tp.style.display = "block";
-    currentX = xs[randInt(0, xs.length - 1)];
-    currentY = a * currentX + b;
-    const qEl = document.getElementById("question"); if (qEl) qEl.textContent = `表を見て、x = ${currentX} のときの y の値を答えなさい。`;
-    showUIForProblemMode('table');
-    focusAnswerInput();
-  } catch (err) { console.error('generateTableQuestion error:', err); }
-}
-
-function checkTableAnswer() {
-  try {
-    const ai = document.getElementById("tableAnswerInput");
-    if (!ai) return;
-    const v = parseNumber(ai.value);
-    const res = document.getElementById("tableAnswerResult");
-    if (v === null) { if (res) res.textContent = '数値を入力してください。'; return; }
-    if (approxEqual(v, currentY)) {
-      if (res) res.textContent = '正解！';
-      correctCount++; score += 10;
-    } else {
-      if (res) res.textContent = `不正解。正解は ${currentY} です。`;
-      wrongProblems.push({ question: document.getElementById('question')?.textContent || '', correct: currentY });
-      life--; const lifeEl = document.getElementById("life"); if (lifeEl) lifeEl.textContent = life;
-    }
-    const scoreEl = document.getElementById("score"); if (scoreEl) scoreEl.textContent = score;
-    updateWrongProblemsPanel();
-    if (life <= 0) endGame();
-    else setTimeout(() => generateGameQuestion(), 700);
-  } catch (err) { console.error(err); }
-}
-
-// --- グラフ問題生成 ---
-function generateGraphQuestion(withPanel) {
-  try {
-    const range = getRanges();
-    const a = randInt(range.aMin, range.aMax); const b = randInt(range.bMin, range.bMax);
-    graphA = a; graphB = b; currentA = a; currentB = b;
-    const gp = document.getElementById("graphPanel"); if (gp && withPanel) gp.style.display = "block";
-    drawAlgebraGraph(a, b);
-
-    const mode = document.getElementById('graphMode')?.value || 'ab';
-    if (mode === 'ab') {
-      const slopeLabel = document.getElementById('slopeLabel'); if (slopeLabel) slopeLabel.style.display = 'inline';
-      const interceptLabel = document.getElementById('interceptLabel'); if (interceptLabel) interceptLabel.style.display = 'inline';
-      const eqInput = document.getElementById('equationInput'); if (eqInput) eqInput.style.display = 'none';
-      const graphCheckBtn = document.getElementById('graphCheckBtn'); if (graphCheckBtn) graphCheckBtn.style.display = 'inline';
-    } else {
-      const slopeLabel = document.getElementById('slopeLabel'); if (slopeLabel) slopeLabel.style.display = 'none';
-      const interceptLabel = document.getElementById('interceptLabel'); if (interceptLabel) interceptLabel.style.display = 'none';
-      const eqInput = document.getElementById('equationInput'); if (eqInput) eqInput.style.display = 'inline';
-      const graphCheckBtn = document.getElementById('graphCheckBtn'); if (graphCheckBtn) graphCheckBtn.style.display = 'inline';
-    }
-    questionType = 'eq';
-    const qEl = document.getElementById("graphProblem"); if (qEl) qEl.textContent = 'グラフを見て a,b を答えてください。';
-    focusAnswerInput();
-  } catch (err) { console.error('generateGraphQuestion error:', err); }
-}
-
-// --- 判定処理 ---
-function checkAnswer() {
-  try {
-    const ar = document.getElementById("answerResult");
-    if (questionType === 'y') {
-      const ai = document.getElementById("answerInput");
-      const v = parseNumber(ai?.value);
-      if (v === null) { if (ar) ar.textContent = '数値を入力してください。'; return; }
-      if (approxEqual(v, currentY)) { if (ar) ar.textContent = '正解！'; correctCount++; score += 10; }
-      else { if (ar) ar.textContent = `不正解。正解は ${currentY} です。`; wrongProblems.push({ question: document.getElementById('question')?.textContent || '', correct: currentY }); life--; }
-    } else if (questionType === 'a') {
-      const ai = document.getElementById("answerInput");
-      const v = parseNumber(ai?.value);
-      if (v === null) { if (ar) ar.textContent = '数値を入力してください。'; return; }
-      if (approxEqual(v, currentA)) { if (ar) ar.textContent = '正解！'; correctCount++; score += 10; }
-      else { if (ar) ar.textContent = `不正解。正解は ${currentA} です。`; wrongProblems.push({ question: document.getElementById('question')?.textContent || '', correct: currentA }); life--; }
-    } else if (questionType === 'b') {
-      const ai = document.getElementById("answerInput");
-      const v = parseNumber(ai?.value);
-      if (v === null) { if (ar) ar.textContent = '数値を入力してください。'; return; }
-      if (approxEqual(v, currentB)) { if (ar) ar.textContent = '正解！'; correctCount++; score += 10; }
-      else { if (ar) ar.textContent = `不正解。正解は ${currentB} です。`; wrongProblems.push({ question: document.getElementById('question')?.textContent || '', correct: currentB }); life--; }
-    } else if (questionType === '2pt' || questionType === 'rate') {
-      const ai = document.getElementById("answerInput");
-      const v = parseNumber(ai?.value);
-      if (v === null) { if (ar) ar.textContent = '数値を入力してください。'; return; }
-      if (approxEqual(v, currentA)) { if (ar) ar.textContent = '正解！'; correctCount++; score += 10; }
-      else { if (ar) ar.textContent = `不正解。正解は ${currentA} です。`; wrongProblems.push({ question: document.getElementById('question')?.textContent || '', correct: currentA }); life--; }
-    } else if (questionType === 'ab' || questionType === 'eq') {
-      const aIn = parseNumber(document.getElementById("answerInputA")?.value);
-      const bIn = parseNumber(document.getElementById("answerInputB")?.value);
-      if (aIn === null || bIn === null) { if (ar) ar.textContent = 'a, b を入力してください。'; return; }
-      if (approxEqual(aIn, currentA) && approxEqual(bIn, currentB)) { if (ar) ar.textContent = '正解！'; correctCount++; score += 10; }
-      else { if (ar) ar.textContent = `不正解。正解は a=${currentA}, b=${currentB} です。`; wrongProblems.push({ question: document.getElementById('question')?.textContent || '', correct: { a: currentA, b: currentB } }); life--; }
-    } else {
-      if (ar) ar.textContent = '判定できません。';
-    }
-
-    const scoreEl = document.getElementById("score"); if (scoreEl) scoreEl.textContent = score;
-    const lifeEl = document.getElementById("life"); if (lifeEl) lifeEl.textContent = life;
-    updateWrongProblemsPanel();
-    if (life <= 0) endGame();
-    else setTimeout(() => generateGameQuestion(), 700);
-  } catch (err) { console.error('checkAnswer error:', err); }
-}
-
-// --- グラフ用判定 ---
-function checkGraphAnswer() {
-  try {
-    const mode = document.getElementById('graphMode')?.value || 'ab';
-    const ar = document.getElementById("graphAnswerResult");
-    if (mode === 'ab') {
-      const aIn = parseNumber(document.getElementById("slopeInput")?.value || document.getElementById("answerInputA")?.value);
-      const bIn = parseNumber(document.getElementById("interceptInput")?.value || document.getElementById("answerInputB")?.value);
-      if (aIn === null || bIn === null) { if (ar) ar.textContent = 'a, b を入力してください'; return; }
-      if (approxEqual(aIn, currentA) && approxEqual(bIn, currentB)) { if (ar) ar.textContent = '正解！'; correctCount++; score += 10; }
-      else { if (ar) ar.textContent = `不正解。正解は a=${currentA}, b=${currentB}`; wrongProblems.push({ question: document.getElementById('graphProblem')?.textContent || '', correct: { a: currentA, b: currentB } }); life--; }
-    } else {
-      const eq = (document.getElementById("equationInput")?.value || '').replace(/\s/g, '');
-      let m = eq.match(/y=([+-]?[0-9]*\.?[0-9]+)x([+-][0-9]*\.?[0-9]+)?/i);
-      if (!m) m = eq.match(/([+-]?[0-9]*\.?[0-9]+)x([+-][0-9]*\.?[0-9]+)?/i);
-      if (!m) { if (ar) ar.textContent = '式を y=ax+b の形で入力してください'; return; }
-      const aIn = parseNumber(m[1]); const bIn = parseNumber(m[2] || '0');
-      if (aIn === null || bIn === null) { if (ar) ar.textContent = '数値を正しく入力してください'; return; }
-      if (approxEqual(aIn, currentA) && approxEqual(bIn, currentB)) { if (ar) ar.textContent = '正解！'; correctCount++; score += 10; }
-      else { if (ar) ar.textContent = `不正解。正解は a=${currentA}, b=${currentB}`; wrongProblems.push({ question: document.getElementById('graphProblem')?.textContent || '', correct: { a: currentA, b: currentB } }); life--; }
-    }
-    const scoreEl = document.getElementById("score"); if (scoreEl) scoreEl.textContent = score;
-    const lifeEl = document.getElementById("life"); if (lifeEl) lifeEl.textContent = life;
-    updateWrongProblemsPanel();
-    if (life <= 0) endGame();
-    else setTimeout(() => generateGameQuestion(), 700);
-  } catch (err) { console.error('checkGraphAnswer error:', err); }
-}
-
-// --- グラフの UI 変化監視 ---
+// --- graphMode change handler & initial UI bind ---
 function onGraphModeChange() {
-  const problemType = document.getElementById("problemType")?.value || currentGameQuestionType;
-  if (problemType === 'graph') showUIForProblemMode('graph');
+  const pt = document.getElementById("problemType")?.value || currentGameQuestionType;
+  if (pt === 'graph') showUIForProblemMode('graph');
 }
 
-// --- 初期化バインド ---
 function initUIBindings() {
-  // ensure problemType initial UI shown
   const p = document.getElementById("problemType")?.value || currentGameQuestionType;
   showUIForProblemMode(p);
-
-  // add change listeners so UI updates immediately when user changes selects
-  const gm = document.getElementById('graphMode');
-  if (gm) gm.addEventListener('change', onGraphModeChange);
-  const pt = document.getElementById('problemType');
-  if (pt) pt.addEventListener('change', () => { onProblemTypeChange(); showUIForProblemMode(pt.value); });
-
-  // focus the first visible input
+  const gm = document.getElementById('graphMode'); if (gm) gm.addEventListener('change', onGraphModeChange);
+  const pt = document.getElementById('problemType'); if (pt) pt.addEventListener('change', () => { onProblemTypeChange(); showUIForProblemMode(pt.value); });
   focusAnswerInput();
 }
 if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', initUIBindings);
