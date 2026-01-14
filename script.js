@@ -444,9 +444,18 @@ function generateTableQuestion() {
     currentX = xs[targetIdx];
     currentY = a * currentX + b;
 
-    let html = `<table style="margin:0 auto; border-collapse:collapse;">`;
-    html += `<tr><th style="padding:6px;border:1px solid #ddd;">x</th>`;
-    xs.forEach((x, i) => {
+   let html = `<table style="margin:0 auto; border-collapse:collapse;">`;
+
+// x 行
+html += `<tr><th style="padding:6px;border:1px solid #ddd;">x</th>`;
+xs.forEach((x) => {
+  html += `<td style="padding:6px;border:1px solid #ddd;">${x}</td>`;
+});
+html += `</tr>`;
+
+// y 行
+html += `<tr><th style="padding:6px;border:1px solid #ddd;">y</th>`;
+xs.forEach((x, i) => {
   const yv = a * x + b;
   if (i === targetIdx) {
     html += `
@@ -458,13 +467,7 @@ function generateTableQuestion() {
     html += `<td style="padding:6px;border:1px solid #ddd;">${yv}</td>`;
   }
 });
-    xs.forEach((x, i) => {
-      const yv = a * x + b;
-      if (i === targetIdx) html += `<td style="padding:6px;border:1px solid #ddd;background:#fffbdd;font-weight:bold;">${yv}</td>`;
-      else html += `<td style="padding:6px;border:1px solid #ddd;">${yv}</td>`;
-    });
-    html += `</tr></table>`;
-
+html += `</tr></table>`;
     tableArea.innerHTML = html;
     const qEl = document.getElementById('question');
     if (qEl) qEl.textContent = `表の中の y の値を読んで問題に答えなさい。\n（下の入力欄には指定された x における y を入力します）\n求める x = ${currentX}`;
