@@ -458,11 +458,7 @@ html += `<tr><th style="padding:6px;border:1px solid #ddd;">y</th>`;
 xs.forEach((x, i) => {
   const yv = a * x + b;
   if (i === targetIdx) {
-    html += `
-      <td style="padding:6px;border:1px solid #ddd;
-                 background:#fffbdd;font-weight:bold;">
-        ？
-      </td>`;
+   html += `<td class="question-cell">？</td>`;
   } else {
     html += `<td style="padding:6px;border:1px solid #ddd;">${yv}</td>`;
   }
