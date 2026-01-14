@@ -447,10 +447,17 @@ function generateTableQuestion() {
     let html = `<table style="margin:0 auto; border-collapse:collapse;">`;
     html += `<tr><th style="padding:6px;border:1px solid #ddd;">x</th>`;
     xs.forEach((x, i) => {
-      if (i === targetIdx) html += `<td style="padding:6px;border:1px solid #ddd;background:#fffbdd;font-weight:bold;">${x}</td>`;
-      else html += `<td style="padding:6px;border:1px solid #ddd;">${x}</td>`;
-    });
-    html += `</tr><tr><th style="padding:6px;border:1px solid #ddd;">y</th>`;
+  const yv = a * x + b;
+  if (i === targetIdx) {
+    html += `
+      <td style="padding:6px;border:1px solid #ddd;
+                 background:#fffbdd;font-weight:bold;">
+        ？
+      </td>`;
+  } else {
+    html += `<td style="padding:6px;border:1px solid #ddd;">${yv}</td>`;
+  }
+});
     xs.forEach((x, i) => {
       const yv = a * x + b;
       if (i === targetIdx) html += `<td style="padding:6px;border:1px solid #ddd;background:#fffbdd;font-weight:bold;">${yv}</td>`;
