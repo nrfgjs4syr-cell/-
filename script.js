@@ -223,27 +223,18 @@ function drawAlgebraGraph(a, b) {
               fill: false,
               pointRadius: 0,
               tension: 0
-{
-  type: 'scatter',
-  data: [{ x: 0, y: 0 }],
-  pointRadius: 5,
-  pointBackgroundColor: '#e53935',
-  pointBorderColor: '#e53935'
-}
-
             },
             {
               // ★ 原点 (0,0)
-              {
-  type: 'scatter',
-  data: [{ x: 0, y: 0 }],
-  pointRadius: 5,
-  pointBackgroundColor: '#e53935',
-  pointBorderColor: '#e53935'
-}
-
+              label: 'origin',
+              data: [{ x: 0, y: 0 }],
+              parsing: false,
+              showLine: false,
+              pointRadius: 5,
+              pointBackgroundColor: '#e53935'
             }
           ]
+        },
         options: {
           responsive: true,
           maintainAspectRatio: false,
@@ -278,11 +269,6 @@ function drawAlgebraGraph(a, b) {
                 ctx.font = '14px sans-serif';
                 ctx.fillText('(0,0)', x0 + 6, y0 - 6);
                 ctx.restore();
-border: {
-  color: '#000',
-  width: 2
-}
-
               }
             }
           }
@@ -532,7 +518,7 @@ xs.forEach((x, i) => {
 html += `</tr></table>`;
 
 // ★ここで1回だけ代入する
-
+tableArea.innerHTML = html;
 
     tableArea.innerHTML = html;
     const qEl = document.getElementById('question');
