@@ -189,150 +189,98 @@ function applyCustomRange() {
   if (v >= 1) totalQuestions = v;
 }
 
+// --- draw algebra graph (Chart.js or canvas fallback) ---
 function drawAlgebraGraph(a, b) {
   try {
     const canvas = document.getElementById('graphCanvas');
     if (!canvas) return;
-
-    const minX = -5, maxX = 5;
-    const labels = [];
-    const data = [];
-
-    for (let x = minX; x <= maxX; x++) {
-      labels.push(x);
-      data.push(a * x + b);
-    }
-
-    /* ===== Chart.js 使用 ===== */
     if (window.Chart) {
-      if (graphChart) {
-        try { graphChart.destroy(); } catch {}
-        graphChart = null;
-      }
+      if (graphChart) { try { graphChart.destroy(); } catch {} graphChart = null; }
+      const labels = []; const data = [];
+      const minX = -5, maxX = 5;
+      for (let x = minX; x <= maxX; x++) { labels.push(x); data.push(a * x + b); }
+
+      const yVals = data.slice();
+      const minY = Math.min(...yVals), maxY = Math.max(...yVals);
+      const rangeY = Math.max(1e-6, maxY - minY);
+      let yStep = Math.max(0.5, rangeY / 20); if (rangeY > 20) yStep = Math.ceil(yStep);
 
       const ctx = canvas.getContext('2d');
       graphChart = new Chart(ctx, {
         type: 'line',
         data: {
           labels,
-          datasets: [
-            {
-              label: `y = ${a}x + ${b}`,
-              data,
-              borderColor: '#3578e5',
-              fill: false,
-              pointRadius: 0,
-              tension: 0
-            },
-            {
-              // ★ 原点 (0,0)
-              label: 'origin',
-              data: [{ x: 0, y: 0 }],
-              parsing: false,
-              showLine: false,
-              pointRadius: 5,
-              pointBackgroundColor: '#e53935'
-            }
-          ]
+          datasets: [{
+            label: `y = ${a}x + ${b}`,
+            data,
+            borderColor: '#3578e5',
+            backgroundColor: 'rgba(53,120,229,0.08)',
+            fill: false,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            tension: 0
+          }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           scales: {
-            x: {
-              min: minX,
-              max: maxX,
-              ticks: { stepSize: 1 },
-              grid: {
-                color: c => c.tick.value === 0 ? '#000' : '#ddd',
-                lineWidth: c => c.tick.value === 0 ? 2 : 1
-              }
-            },
+            x: { display: true, min: minX, max: maxX, ticks: { stepSize: 1 } },
             y: {
-              ticks: { stepSize: 1 },
-              grid: {
-                color: c => c.tick.value === 0 ? '#000' : '#ddd',
-                lineWidth: c => c.tick.value === 0 ? 2 : 1
-              }
+              display: true,
+              suggestedMin: Math.floor((minY - yStep) / yStep) * yStep,
+              suggestedMax: Math.ceil((maxY + yStep) / yStep) * yStep,
+              ticks: { stepSize: yStep, callback: function(value) { return Number.isInteger(value) ? String(value) : value.toFixed(1); } }
             }
           },
-          plugins: {
-            legend: { display: false },
-            tooltip: { enabled: false },
-            originLabel: {
-              afterDraw(chart) {
-                const { ctx, scales } = chart;
-                const x0 = scales.x.getPixelForValue(0);
-                const y0 = scales.y.getPixelForValue(0);
-                ctx.save();
-                ctx.fillStyle = '#e53935';
-                ctx.font = '14px sans-serif';
-                ctx.fillText('(0,0)', x0 + 6, y0 - 6);
-                ctx.restore();
-              }
-            }
-          }
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          elements: { point: { radius: 0, hoverRadius: 0 } }
         }
       });
       return;
     }
 
-    /* ===== fallback canvas ===== */
+    // canvas fallback
     const ctx = canvas.getContext('2d');
     const ratio = window.devicePixelRatio || 1;
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    canvas.width = w * ratio;
-    canvas.height = h * ratio;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    canvas.width = Math.max(300, Math.floor(w * ratio));
+    canvas.height = Math.max(200, Math.floor(h * ratio));
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.clearRect(0, 0, w, h); ctx.fillStyle = '#f9f9f9'; ctx.fillRect(0, 0, w, h);
 
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#f9f9f9';
-    ctx.fillRect(0, 0, w, h);
+    const minX = -5, maxX = 5;
+    const yVals = []; for (let x = minX; x <= maxX; x++) yVals.push(a * x + b);
+    const minY = Math.min(...yVals), maxY = Math.max(...yVals);
+    const rangeY = Math.max(1e-6, maxY - minY);
+    let yStep = Math.max(0.5, rangeY / 20); if (rangeY > 20) yStep = Math.ceil(yStep);
 
-    const yVals = data;
-    const minY = Math.min(...yVals);
-    const maxY = Math.max(...yVals);
+    const ys = rangeY || 1;
+    const yToPx = (yVal) => h - ((yVal - minY) / ys) * h;
 
-    const xToPx = x => ((x - minX) / (maxX - minX)) * w;
-    const yToPx = y => h - ((y - minY) / (maxY - minY)) * h;
+    ctx.strokeStyle = '#eee'; ctx.lineWidth = 1; ctx.fillStyle = '#666'; ctx.font = '12px sans-serif';
+    const startY = Math.floor(minY / yStep) * yStep;
+    for (let yLine = startY; yLine <= maxY + 1e-9; yLine = Math.round((yLine + yStep) * 1000000) / 1000000) {
+      const py = yToPx(yLine);
+      ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(w, py); ctx.stroke();
+      const label = Number.isInteger(yLine) ? String(yLine) : yLine.toFixed(1);
+      ctx.fillText(label, 6, py - 4);
+    }
+    const y0px = yToPx(0);
+    ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, y0px); ctx.lineTo(w, y0px); ctx.stroke();
 
-    // x軸
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, yToPx(0));
-    ctx.lineTo(w, yToPx(0));
-    ctx.stroke();
-
-    // y軸
-    ctx.beginPath();
-    ctx.moveTo(xToPx(0), 0);
-    ctx.lineTo(xToPx(0), h);
-    ctx.stroke();
-
-    // 原点
-    ctx.fillStyle = '#e53935';
-    ctx.beginPath();
-    ctx.arc(xToPx(0), yToPx(0), 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillText('(0,0)', xToPx(0) + 6, yToPx(0) - 6);
-
-    // 直線
-    ctx.strokeStyle = '#3578e5';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    for (let i = 0; i < data.length; i++) {
-      const x = minX + i;
-      const px = xToPx(x);
-      const py = yToPx(data[i]);
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
+    ctx.strokeStyle = '#3578e5'; ctx.lineWidth = 2; ctx.beginPath();
+    const steps = 200;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const xVal = minX + t * (maxX - minX);
+      const yVal = a * xVal + b;
+      const px = t * w;
+      const py = yToPx(yVal);
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
     }
     ctx.stroke();
-  } catch (err) {
-    console.error('drawAlgebraGraph error:', err);
-  }
+  } catch (err) { console.error('drawAlgebraGraph error:', err); }
 }
 
 // --- ヒント ---
