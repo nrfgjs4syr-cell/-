@@ -427,53 +427,75 @@ function generateGraphQuestion(showGraph) {
 }
 
 // 表問題: x 列を与えて y を求める形式
+// 表問題：x 列を与えて y を求める形式（完全修正版）
 function generateTableQuestion() {
   try {
     const ranges = getRanges();
+
+    // a, b を決定
     const a = randInt(ranges.aMin, ranges.aMax);
     const b = randInt(ranges.bMin, ranges.bMax);
-    currentA = a; currentB = b;
-    // create a small table of 4 x values
+    currentA = a;
+    currentB = b;
+
+    // x を4つ用意
     const xs = [];
-    const startX = randInt(Math.max(ranges.xMin, -3), Math.min(ranges.xMax, 3));
-    for (let i = 0; i < 4; i++) xs.push(startX + i);
-    const tableArea = document.getElementById('tableArea');
+    const startX = randInt(
+      Math.max(ranges.xMin, -3),
+      Math.min(ranges.xMax, 3)
+    );
+    for (let i = 0; i < 4; i++) {
+      xs.push(startX + i);
+    }
+
+    const tableArea = document.getElementById("tableArea");
     if (!tableArea) return;
-    // choose which column the player should answer for (random)
+
+    // ? にする列をランダムで1つ決める
     const targetIdx = randInt(0, xs.length - 1);
     currentX = xs[targetIdx];
     currentY = a * currentX + b;
 
-let html = `<table style="margin:0 auto; border-collapse:collapse;">`;
+    // ---- 表HTML作成 ----
+    let html = `<table style="margin:0 auto;border-collapse:collapse;">`;
 
-// --- x 行（絶対に ? を入れない）---
-html += `<tr><th style="padding:6px;border:1px solid #ddd;">x</th>`;
-xs.forEach(x => {
-  html += `<td style="padding:6px;border:1px solid #ddd;">${x}</td>`;
-});
-html += `</tr>`;
+    // x 行（? は絶対に入れない）
+    html += `<tr><th style="padding:6px;border:1px solid #ddd;">x</th>`;
+    xs.forEach(x => {
+      html += `<td style="padding:6px;border:1px solid #ddd;">${x}</td>`;
+    });
+    html += `</tr>`;
 
-// --- y 行（targetIdx だけ ?）---
-html += `<tr><th style="padding:6px;border:1px solid #ddd;">y</th>`;
-xs.forEach((x, i) => {
-  const yv = a * x + b;
-  if (i === targetIdx) {
-   html += `<td class="question-cell">？</td>`;
-  } else {
-    html += `<td style="padding:6px;border:1px solid #ddd;">${yv}</td>`;
-  }
-});
-html += `</tr></table>`;
+    // y 行（targetIdx だけ ?）
+    html += `<tr><th style="padding:6px;border:1px solid #ddd;">y</th>`;
+    xs.forEach((x, i) => {
+      const y = a * x + b;
+      if (i === targetIdx) {
+        html += `<td class="question-cell">？</td>`;
+      } else {
+        html += `<td style="padding:6px;border:1px solid #ddd;">${y}</td>`;
+      }
+    });
+    html += `</tr></table>`;
 
-// ★ここで1回だけ代入する
-tableArea.innerHTML = html;
-
+    // ★ 代入は1回だけ
     tableArea.innerHTML = html;
-    const qEl = document.getElementById('question');
-    if (qEl) qEl.textContent = `表の中の y の値を読んで問題に答えなさい。\n（下の入力欄には指定された x における y を入力します）\n求める x = ${currentX}`;
-    showUIForProblemMode('table');
-    const ta = document.getElementById('tableAnswerInput'); if (ta) ta.value = "";
-  } catch (err) { console.error('generateTableQuestion error:', err); }
+
+    // 問題文
+    const qEl = document.getElementById("question");
+    if (qEl) {
+      qEl.textContent =
+        `表の ? に入る y の値を求めよ（x = ${currentX}）`;
+    }
+
+    // UI制御
+    showUIForProblemMode("table");
+    const input = document.getElementById("tableAnswerInput");
+    if (input) input.value = "";
+
+  } catch (e) {
+    console.error("generateTableQuestion error:", e);
+  }
 }
 
 // 変化の割合（傾き）問題
