@@ -244,7 +244,6 @@ function drawAlgebraGraph(a, b) {
 
             }
           ]
-        },
         options: {
           responsive: true,
           maintainAspectRatio: false,
