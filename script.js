@@ -223,6 +223,14 @@ function drawAlgebraGraph(a, b) {
               fill: false,
               pointRadius: 0,
               tension: 0
+{
+  type: 'scatter',
+  data: [{ x: 0, y: 0 }],
+  pointRadius: 5,
+  pointBackgroundColor: '#e53935',
+  pointBorderColor: '#e53935'
+}
+
             },
             {
               // ★ 原点 (0,0)
@@ -232,6 +240,7 @@ function drawAlgebraGraph(a, b) {
   pointRadius: 5,
   pointBackgroundColor: '#e53935',
   pointBorderColor: '#e53935'
+}
 
             }
           ]
@@ -245,12 +254,9 @@ function drawAlgebraGraph(a, b) {
               max: maxX,
               ticks: { stepSize: 1 },
               grid: {
-  color: '#ddd'
-},
-border: {
-  color: '#000',
-  width: 2
-}
+                color: c => c.tick.value === 0 ? '#000' : '#ddd',
+                lineWidth: c => c.tick.value === 0 ? 2 : 1
+              }
             },
             y: {
               ticks: { stepSize: 1 },
@@ -273,6 +279,11 @@ border: {
                 ctx.font = '14px sans-serif';
                 ctx.fillText('(0,0)', x0 + 6, y0 - 6);
                 ctx.restore();
+border: {
+  color: '#000',
+  width: 2
+}
+
               }
             }
           }
