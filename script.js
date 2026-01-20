@@ -533,7 +533,7 @@ xs.forEach((x, i) => {
 html += `</tr></table>`;
 
 // ★ここで1回だけ代入する
-tableArea.innerHTML = html;
+
 
     tableArea.innerHTML = html;
     const qEl = document.getElementById('question');
